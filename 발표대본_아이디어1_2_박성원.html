@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<title>발표 대본 아이디어 1·2</title>
+<style>
+@page{size:A4 portrait;margin:16mm 16mm 14mm}
+:root{--ink:#17202A;--muted:#5B6672;--line:#D5DCE2;--soft:#F2F4F6;--accent:#D99A00;--accent-soft:#FFF3D1;--steel:#2C5D86;--steel-soft:#E3EDF5}
+html,body{margin:0;color:var(--ink);font-family:"Malgun Gothic","맑은 고딕",sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+@media screen{body{max-width:800px;margin:0 auto;padding:24px 16px;background:#fff}}
+h1{font-size:22px;margin:0 0 4px}
+h2{font-size:18px;margin:0;padding:8px 12px;background:var(--steel-soft);border-left:5px solid var(--steel);border-radius:3px}
+.meta{font-size:11.5px;color:var(--muted);margin:0 0 14px}
+.part{page-break-after:always}
+.part:last-child{page-break-after:auto}
+.cue{display:grid;grid-template-columns:88px 1fr;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);break-inside:avoid}
+.cue .t{font-family:Consolas,monospace;font-size:12px;color:var(--steel);font-weight:700;line-height:1.5}
+.cue .t span{display:block;font-family:"Malgun Gothic",sans-serif;font-weight:400;color:var(--muted);font-size:11px}
+.cue p{margin:0;font-size:13.5px;line-height:1.85}
+.cue p b{background:var(--accent-soft)}
+.act{font-size:11.5px;color:var(--muted);margin-top:3px}
+.qa{margin-top:12px;break-inside:avoid}
+.qa h3{font-size:14px;margin:0 0 6px}
+.qa table{border-collapse:collapse;width:100%;font-size:12px}
+.qa td,.qa th{border-bottom:1px solid var(--line);padding:5px 7px;text-align:left;vertical-align:top}
+.qa th{background:var(--soft);font-size:11px;color:var(--muted)}
+.tip{font-size:11.5px;color:var(--muted);margin-top:10px;line-height:1.6}
+</style></head><body>
+
+<section class="part">
+  <h1>발표 대본 · 아이디어 1 · 3D 로더 고장 예방</h1>
+  <p class="meta">약 5분 · 보고서 v2(14쪽) 기준 · 굵은 글씨는 강조해서 말할 곳 · 박성원</p>
+  <h2>아이디어 1 (5분)</h2>
+
+  <div class="cue"><div class="t">0:00–0:30<span>1쪽 표지</span></div><div><p>안녕하세요, HW팀 펌웨어 박성원입니다. 첫 번째 제안은 3D 로더 고장 예방입니다. 한 줄로 말씀드리면, <b>고장 순간의 기록을 남기고, 나빠지는 추세를 고장 전에 알리는 것</b>입니다. 1단계는 지금 보드의 펌웨어만 바꿔서 부품비 0원으로 하고, 필요할 때만 2단계로 작은 보드를 붙입니다. 카메라와 AI는 쓰지 않습니다.</p></div></div>
+
+  <div class="cue"><div class="t">0:30–1:10<span>2쪽 현장 문제</span></div><div><p>현장에서는 벨트 올라탐, 바퀴 빠짐, 벨트 끊어짐, 물건 끼임, 케이블 베어 이탈이 반복됩니다. 문제는 <b>고장이 나도 그 순간의 값이 남지 않는다</b>는 것입니다. 그래서 출동해서 재현해 봐야 원인을 압니다. 실제로 제가 작업하며 겪은 세 건이 있습니다. Y가 제시간에 못 간 건 FRAM 가감속 설정이 바뀌어 있었고, 이동 중 X 무응답은 통신 간격이 0이었고, Y 높이 틀어짐은 드라이브 설정값이 바뀐 것이었습니다. <b>셋 다 기록만 있었으면 사무실에서 판정할 수 있었던 일</b>입니다.</p></div></div>
+
+  <div class="cue"><div class="t">1:10–1:40<span>3쪽 전체 구성</span></div><div><p>구성은 두 단계입니다. 1단계는 메인 보드가 이미 읽고 있는 값을 버리지 않고 기록하고, 평소와 비교합니다. 2단계는 로봇 하부에 손바닥보다 작은 노드를 붙여 흔들림과 기울기를 잽니다. 알림은 지금 연결된 현장 PC를 거쳐 휴대폰으로 갑니다. <b>보드가 인터넷에 직접 붙지 않고, 케이블 베어에 선도 늘리지 않습니다.</b></p></div></div>
+
+  <div class="cue"><div class="t">1:40–2:30<span>4~5쪽 1단계</span></div><div><p>지금 펌웨어는 이동 중에 X 모터 두 개의 위치를 9ms 동안 읽고 20ms 쉬기를 반복합니다. 이 값으로 <b>두 모터의 위치 차이, 도착 시간, 반복 횟수</b>를 알 수 있는데, 지금은 판단에만 쓰고 버립니다. 이걸 이동마다 32바이트로 요약해 FRAM에 최근 128건을 남기면 비행기 블랙박스가 됩니다. 기준은 그 로더의 최근 7일 평소 값이라, 현장마다 따로 맞출 필요가 없습니다. 또 메인 보드 자신의 건강도 봅니다. 3.3V 전압, 칩 온도, 리셋 원인, 통신 오류율은 부품 없이 잴 수 있어서, 전원부가 서서히 나빠지는 것을 <b>보드가 죽기 전에</b> 알 수 있습니다.</p></div></div>
+
+  <div class="cue"><div class="t">2:30–3:00<span>6쪽 시험</span></div><div><p>정말 잡히는지는 사무실 시험 장비에서 확인합니다. 같은 이동을 200번 해서 평소의 흔들림 폭을 재고, 레일에 테이프를 붙이거나 볼트를 조금 풀어 일부러 고장을 만듭니다. 평균이 평소 흔들림의 3배 넘게 움직이면 잡힌 것입니다. <b>이 결과가 2단계 노드를 만들지 말지를 정합니다.</b></p></div></div>
+
+  <div class="cue"><div class="t">3:00–3:50<span>7~9쪽 노드</span></div><div><p>2단계 노드는 30×40mm 보드에 MCU와 IMU, RS485 칩을 올린 것입니다. IMU는 휴대폰 화면을 돌리는 센서와 같은 칩입니다. 배선이 걱정되실 텐데, X · Y · TILT 드라이브가 전부 로봇에 타고 다니기 때문에 <b>통신선과 24V는 이미 로봇까지 와 있습니다.</b> 노드는 그 자리에서 30cm만 분기해 ID5로 붙습니다. 노드는 이동하는 동안 혼자 계산하고, 도착한 뒤 메인 보드가 한 번만 읽습니다. 버스를 쓰는 시간은 약 5ms, 1.5초 이동의 0.3%입니다. 부품비는 대당 3~6만원입니다.</p></div></div>
+
+  <div class="cue"><div class="t">3:50–4:20<span>10~11쪽 판단 · 시연</span></div><div><p>판단은 "평소보다 몇 % 달라졌나"입니다. 도착 시간이 15% 늘면 주의, 30%면 경고 같은 식입니다. 솔직하게 말씀드리면 끼임, 원인 구분, 바퀴 풀림은 확신이 높고, 벨트 장력은 시험이 필요하고, 벨트 쏠림 초기는 한계가 있습니다. 화면의 QR을 찍으시면 3D 로더에서 고장을 고를 때 휴대폰에 알림이 오는 과정을 직접 보실 수 있습니다.</p><p class="act">[행동] 시뮬레이터에서 "바퀴 풀림" 선택 → 알림 길이 켜지는 것 보여 주기</p></div></div>
+
+  <div class="cue"><div class="t">4:20–5:00<span>12쪽 일정 · 요청</span></div><div><p>일정은 1단계 3~4개월, 시험 결과를 보고 노드까지 하면 약 1년입니다. 비용은 1단계 0원, 노드 개발용 4만원과 시제품 PCB 30~60만원입니다. 이 일은 제 2027년 업무계획의 "기존 제품 펌웨어 개선"과 그대로 이어집니다. <b>요청드릴 것은 세 가지</b>입니다. 시험 장비 사용 시간, 노드 회로 검토 지원, 그리고 PC 프로그램 담당자와 진단 메시지 형식 협의입니다. 감사합니다.</p></div></div>
+
+  <div class="qa"><h3>예상 질문</h3>
+    <table><tr><th>질문</th><th>답</th></tr>
+      <tr><td>선이 정말 안 늘어나나요?</td><td>드라이브 4개가 로봇 위에 있어서 RS485와 24V가 이미 와 있습니다. 로봇 위 30cm 분기 하나뿐입니다.</td></tr>
+      <tr><td>AI 없이 믿을 수 있나요?</td><td>고장 종류가 정해져 있고 물리 신호로 나타나서 평소 대비 규칙이면 됩니다. 1단계 재현 시험으로 먼저 숫자로 증명합니다.</td></tr>
+      <tr><td>노드가 고장 나면요?</td><td>분기형이라 운전에는 영향이 없고, 노드가 자기 점검 비트를 보냅니다.</td></tr>
+      <tr><td>지금 업무에 지장은 없나요?</td><td>1단계는 지금 하는 펌웨어 개선 작업 안에 들어가고, 이동 중 버스 사용은 늘지 않습니다.</td></tr>
+    </table></div>
+  <p class="tip">말하기 속도: 1분에 약 300음절. 각 구간 시간을 넘기면 괄호 안 예시(숫자 설명)를 줄이세요.</p>
+</section>
+
+<section class="part">
+  <h1>발표 대본 · 아이디어 2 · 로봇소터 투입 자동화</h1>
+  <p class="meta">약 5분 · 보고서 v2 기준 · 모터 드라이브는 3D 로더와 같은 것 가정 · 박성원</p>
+  <h2>아이디어 2 (5분)</h2>
+
+  <div class="cue"><div class="t">0:00–0:25<span>1쪽 표지</span></div><div><p>두 번째 제안은 로봇소터 투입 자동화입니다. 지금 소터 앞에서 사람이 상품을 하나씩 집어 바코드를 찍고 올리는 일을, <b>작게 시작해서 단계적으로</b> 줄여 가는 계획입니다.</p></div></div>
+
+  <div class="cue"><div class="t">0:25–1:00<span>2쪽 배경</span></div><div><p>24시간 돌리면 투입 자리 하나에 약 4.2명이 필요하고, 최저임금으로만 계산해도 연 1.3억원이 넘습니다. 야간 인력은 구하기도 어렵습니다. 해외에는 이미 로봇 투입 시스템이 있지만 수억 원대이고 남의 소터에 맞춰야 합니다. 저희는 <b>로봇소터를 직접 만들기 때문에 투입점을 장치에 맞게 바꿀 수 있다</b>는 것이 강점입니다.</p></div></div>
+
+  <div class="cue"><div class="t">1:00–1:30<span>3쪽 로드맵</span></div><div><p>그래서 한 번에 로봇을 만들지 않고 세 단계로 나눴습니다. 0단계는 데이터, 1단계는 사람을 돕는 장치, 2단계가 로봇 셀입니다. 단계 사이마다 <b>계속할지를 숫자로 정하는 조건</b>을 두었습니다. 중간에 멈춰도 데이터나 팔 수 있는 장치가 남습니다.</p></div></div>
+
+  <div class="cue"><div class="t">1:30–2:00<span>4쪽 0단계</span></div><div><p>0단계는 지금 투입 자리 위에 카메라 두 대를 다는 것입니다. 비용은 수십에서 수백만 원입니다. 한 사람이 시간당 몇 개를 넣는지, 바코드를 찾고 층을 맞추는 데 시간이 얼마나 드는지, 상품이 어떤 종류인지를 3개월 동안 잽니다. 이 숫자가 다음 단계를 할지 정합니다.</p></div></div>
+
+  <div class="cue"><div class="t">2:00–2:50<span>5~7쪽 1단계</span></div><div><p>1단계는 투입 보조 장치입니다. 사람은 상품을 놓기판에 아무 방향으로 놓기만 합니다. 스캔 터널이 여러 면을 동시에 찍어 바코드를 읽고, 리프트가 목적지 층 높이로 올라가 AGV에 넣어 줍니다. 터널에서 리프트로 넘어갈 때는 <b>벨트 높이를 맞추고 같은 속도로 돌려</b> 이어 받습니다. 리프트는 3D 로더의 Y축 구조와 같습니다. 원칙은 "놓기 전에 확인"입니다. 바코드가 하나만 읽히고 작업 목록에 있을 때만 넣고, 못 읽으면 예외함으로 보냅니다. AI가 필요 없어서 회사 기구와 펌웨어로 6~9개월이면 만들 수 있습니다.</p></div></div>
+
+  <div class="cue"><div class="t">2:50–3:50<span>2단계 쪽들</span></div><div><p>2단계는 1단계 장치 앞에 갠트리를 붙입니다. 토트는 현장 컨베이어로 들어오고, 갠트리가 하나씩 집어 놓기판에 놓습니다. 모터는 <b>3D 로더와 같은 드라이브 6개</b>입니다. X는 로더 X처럼 두 모터를 동시에 움직이고, 위아래 축과 리프트는 로더 Y 서보에 브레이크를 씁니다. 로더 코드 값으로 계산해 보니 토크도 충분했습니다. 한 개에 약 3.2초, 시간당 800~1,000개입니다. 데이터는 <b>무거운 영상은 비전 PC 안에서만 처리하고, 모터를 움직이는 STM32에는 32바이트 결과만</b> 보냅니다. 결과가 늦으면 보내지 않고 예외함으로 갑니다. AI는 상자만 집을 때는 필요 없고, 비닐이나 겹친 상품부터 모델 하나를 외부 업체와 협력합니다.</p></div></div>
+
+  <div class="cue"><div class="t">3:50–4:30<span>비용 · 마진</span></div><div><p>셀 재료비는 약 2,500만~5,200만원으로 추정합니다. 8,000만원에 팔면 매출총이익 약 40%, 개발비 약 6.7억을 갚는 손익분기는 약 21대입니다. 고객 입장에서는 사람 2~3명분을 줄여 약 1년에 회수됩니다. 1단계 장치만 팔아도 이익률 약 37%라, <b>1단계 판매로 2단계 개발비 일부를 먼저 벌 수 있습니다.</b></p></div></div>
+
+  <div class="cue"><div class="t">4:30–5:00<span>위험 · 요청</span></div><div><p>위험도 솔직히 말씀드리면, 회사에 비전 · AI 인력이 없고, 갠트리가 소터에 올리는 해외 특허가 있어 착수 전 확인이 필요합니다. 그래서 오늘 요청드리는 것은 큰 개발이 아니라 <b>0단계 하나</b>입니다. 카메라 두 대와 3개월이면, 이 아이템을 계속할지 숫자로 판단할 수 있습니다. 감사합니다.</p><p class="act">[행동] 시간이 남으면 투입 흐름 3D에서 "2층행"과 "바코드 못 읽음"을 차례로 보여 주기</p></div></div>
+
+  <div class="qa"><h3>예상 질문</h3>
+    <table><tr><th>질문</th><th>답</th></tr>
+      <tr><td>토트는 누가 넣나요? 운반 로봇도 만드나요?</td><td>만들지 않습니다. 현장 컨베이어에 연결하고, 없으면 버퍼 컨베이어나 기성품 운반 로봇을 붙입니다.</td></tr>
+      <tr><td>바코드를 못 읽으면요?</td><td>추측하지 않고 예외함으로 보냅니다. 소터에는 확인된 상품만 들어갑니다.</td></tr>
+      <tr><td>화장품처럼 깨지는 건요?</td><td>쏟지 않고 하나씩 집습니다. 병 · 망 포장 등은 상품 마스터로 처음부터 사람 라인으로 보냅니다.</td></tr>
+      <tr><td>AI 인력이 없는데요?</td><td>0 · 1단계와 2단계 a는 AI가 없습니다. 비닐 · 겹침용 모델 하나만 외부 협력합니다.</td></tr>
+      <tr><td>모터는 새로 사야 하나요?</td><td>3D 로더와 같은 드라이브를 씁니다. 펌웨어와 예비품을 공유합니다.</td></tr>
+    </table></div>
+  <p class="tip">금액은 모두 추정이라고 꼭 덧붙이세요. 질문이 숫자로 들어오면 보고서 해당 쪽(모터 · 사이클 · 마진)을 펼쳐 답하면 됩니다.</p>
+</section>
+</body></html>

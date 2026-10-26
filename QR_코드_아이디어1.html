@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>아이디어 1 QR 코드</title>
+<style>
+body{font-family:"Malgun Gothic",sans-serif;background:#f2f4f3;color:#17201e;margin:0;padding:24px}
+main{max-width:900px;margin:0 auto;display:grid;gap:20px}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px}
+figure{margin:0;background:#fff;border:1px solid #cdd7d3;border-radius:8px;padding:16px;display:grid;gap:10px;justify-items:center}
+img{width:260px;height:260px;image-rendering:pixelated}
+figcaption{text-align:center;font-size:14px}
+figcaption b{display:block;font-size:16px}
+code{font-size:12px;word-break:break-all;color:#56645f}
+p{margin:0;font-size:14px;color:#56645f}
+</style></head><body><main>
+<h1 style="margin:0;font-size:22px">아이디어 1 · QR 코드</h1>
+<p>이미지에서 마우스 오른쪽 → "이미지를 다른 이름으로 저장" 해서 PDF·PPT·엑셀에 붙이면 돼요. 받는 사람이 열려면 claude.ai 페이지의 Share(공유)에서 공유를 켜 두어야 해요.</p>
+<div class="row">
+  <figure><img id="a" alt="앱 화면 QR"><figcaption><b>휴대폰 앱 화면</b>발표 화면에서 고장을 고르면 알림이 와요<br><code id="ua"></code></figcaption></figure>
+  <figure><img id="s" alt="3D 시뮬레이션 QR"><figcaption><b>3D 시뮬레이션</b>로더 + 알림 가는 길 전체<br><code id="us"></code></figcaption></figure>
+</div>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script>
+var U="https://claude.ai/artifact/SWQzcwXL1nVw9D7KqGxso7";
+function png(t){ var q=qrcode(0,'M'); q.addData(t); q.make(); var n=q.getModuleCount(), cell=12, m=4, s=(n+2*m)*cell, c=document.createElement('canvas'); c.width=c.height=s;
+  var x=c.getContext('2d'); x.fillStyle='#fff'; x.fillRect(0,0,s,s); x.fillStyle='#000';
+  for (var r=0;r<n;r++) for (var k=0;k<n;k++) if (q.isDark(r,k)) x.fillRect((k+m)*cell,(r+m)*cell,cell,cell);
+  return c.toDataURL('image/png'); }
+document.getElementById('a').src=png(U+'#app'); document.getElementById('ua').textContent=U+'#app';
+document.getElementById('s').src=png(U+'#sim'); document.getElementById('us').textContent=U+'#sim';
+</script>
+</body></html>

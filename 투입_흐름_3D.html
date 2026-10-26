@@ -1,0 +1,375 @@
+<title>투입 장치 3D 흐름</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+KR:wght@400;600;700&display=swap">
+<style>
+/* Layout: 위 3D 무대 + 조작 칩, 아래 지금 단계 설명, 이어서 "넘어가는 순간" 단면도와 "토트에서 하나씩" 비교 */
+:root{
+  --bg:#F2F4F3; --paper:#FFFFFF; --ink:#17201E; --muted:#56645F; --line:#CDD7D3; --soft:#E6ECE9; --grid:#E3E9E6;
+  --copper:#B4632A; --copper-soft:#F6E7DA; --steel:#2C5B86; --steel-soft:#E1EBF4;
+  --good:#2E7A4C; --good-soft:#DFF0E5; --warn:#A85E15; --warn-soft:#F7EBDD; --bad:#B23B3B; --bad-soft:#F6E0E0;
+  --f-body:"IBM Plex Sans KR","Malgun Gothic","Apple SD Gothic Neo",sans-serif; --f-mono:"IBM Plex Mono",Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#101615; --paper:#171F1E; --ink:#E3EAE7; --muted:#9AA8A4; --line:#2D3937; --soft:#1F2927; --grid:#1A2321;
+  --copper:#E39A5E; --copper-soft:#3A2A1D; --steel:#82B2DE; --steel-soft:#1B2B3A;
+  --good:#63C08A; --good-soft:#1B3125; --warn:#E7A262; --warn-soft:#3A2C1C; --bad:#E57777; --bad-soft:#3A2020; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#101615; --paper:#171F1E; --ink:#E3EAE7; --muted:#9AA8A4; --line:#2D3937; --soft:#1F2927; --grid:#1A2321;
+  --copper:#E39A5E; --copper-soft:#3A2A1D; --steel:#82B2DE; --steel-soft:#1B2B3A;
+  --good:#63C08A; --good-soft:#1B3125; --warn:#E7A262; --warn-soft:#3A2C1C; --bad:#E57777; --bad-soft:#3A2020; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.65;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1100px;margin:0 auto;padding-block:20px 64px;display:grid;gap:20px}
+h1{margin:0;font-size:clamp(21px,3.4vw,30px);line-height:1.3;text-wrap:balance}
+h2{margin:0;font-size:19px;text-wrap:balance}
+h3{margin:0;font-size:15.5px}
+p{margin:0;max-width:72ch}
+.meta{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:14px;display:grid;gap:10px;min-width:0}
+.stage{position:relative;border-radius:6px;overflow:hidden;background:var(--grid);aspect-ratio:16/9;max-width:100%;touch-action:pan-y;cursor:grab}
+@media (max-width:640px){.stage{aspect-ratio:4/3}}
+.stage canvas{display:block;width:100%;height:100%}
+.tag{position:absolute;transform:translate(-50%,-50%);font-size:11.5px;font-weight:600;padding:1px 7px;border-radius:10px;background:var(--paper);color:var(--ink);border:1px solid var(--line);pointer-events:none;white-space:nowrap}
+.tag.hot{background:var(--copper);color:#fff;border-color:var(--copper)}
+.fallback{position:absolute;inset:0;display:grid;place-items:center;padding:20px;text-align:center;color:var(--muted)}
+.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:3px}
+.chips button{flex:none;font:inherit;font-size:13.5px;padding:6px 12px;border:1px solid var(--line);border-radius:999px;background:var(--paper);color:var(--ink);cursor:pointer}
+.chips button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.chips .lbl{flex:none;align-self:center;font-family:var(--f-mono);font-size:11.5px;color:var(--muted);margin-left:4px}
+button:focus-visible,a:focus-visible{outline:2px solid var(--copper);outline-offset:2px}
+.steps{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px}
+.st{border:1px solid var(--line);border-radius:6px;padding:7px 8px;font-size:12.5px;line-height:1.35;background:var(--paper);transition:background .2s,border-color .2s}
+.st b{display:block;font-size:12px;font-family:var(--f-mono);color:var(--muted)}
+.st.on{background:var(--copper-soft);border-color:var(--copper)}
+.st.on b{color:var(--copper)}
+.st.bad.on{background:var(--bad-soft);border-color:var(--bad)} .st.bad.on b{color:var(--bad)}
+@media (max-width:760px){.steps{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.now{background:var(--steel-soft);border-radius:6px;padding:10px 12px;min-height:72px}
+.now b{display:block}
+.fig{overflow-x:auto}
+.fig svg{display:block;width:100%;height:auto;min-width:680px}
+svg text{font-family:var(--f-body);fill:var(--ink)}
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:6px;background:var(--paper)}
+table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:620px}
+th,td{text-align:left;padding:8px 11px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:var(--f-mono);font-weight:600;font-size:11.5px;color:var(--muted);background:var(--soft)}
+tr:last-child td{border-bottom:0}
+.chip{display:inline-block;font-family:var(--f-mono);font-size:11px;padding:0 6px;border-radius:3px;white-space:nowrap}
+.g{background:var(--good-soft);color:var(--good)} .s{background:var(--steel-soft);color:var(--steel)} .w{background:var(--warn-soft);color:var(--warn)} .b{background:var(--bad-soft);color:var(--bad)}
+.callout{background:var(--copper-soft);border-radius:6px;padding:12px 14px;display:grid;gap:6px}
+.note{font-size:13px;color:var(--muted)}
+[hidden]{display:none!important}
+</style>
+
+<div class="wrap">
+  <header style="display:grid;gap:8px">
+    <p class="meta">아이디어 2 · 로봇소터 투입 자동화 · 박성원</p>
+    <h1>토트 속 상품이 2층 AGV에 오르기까지</h1>
+    <p>상품 하나가 <b>토트 → 놓기판 → 스캔 터널 → 리프트 → AGV</b>로 넘어가는 과정을 느리게 보여 줘요. 위에서 "1단계 · 사람"과 "2단계 · 로봇"을 바꿔 보세요. 둘의 차이는 <b>토트에서 하나 꺼내 놓기판에 놓는 손</b> 하나뿐이고, 놓기판부터 뒤는 똑같아요.</p>
+  </header>
+
+  <section class="card" aria-label="3D 시뮬레이션">
+    <div class="stage" id="stage" aria-label="투입 장치 3D 모델. 좌우로 끌면 돌려 볼 수 있음">
+      <div class="fallback" id="fallback" hidden>이 기기에서는 3D를 그릴 수 없어요. 아래 단면도를 봐 주세요.</div>
+    </div>
+    <div class="chips" role="group" aria-label="단계">
+      <span class="lbl">꺼내는 손</span>
+      <button type="button" id="m1" aria-pressed="false">1단계 · 사람</button>
+      <button type="button" id="m2" aria-pressed="true">2단계 · 로봇(갠트리)</button>
+      <span class="lbl">다음 상품</span>
+      <button type="button" data-r="auto" aria-pressed="true">자동</button>
+      <button type="button" data-r="f1" aria-pressed="false">1층행</button>
+      <button type="button" data-r="f2" aria-pressed="false">2층행</button>
+      <button type="button" data-r="bad" aria-pressed="false">바코드 못 읽음</button>
+    </div>
+    <div class="chips" role="group" aria-label="보기와 속도">
+      <span class="lbl">보기</span>
+      <button type="button" id="vA">전체</button>
+      <button type="button" id="vB">스캔 → 리프트</button>
+      <button type="button" id="vC">토트 · 놓기판</button>
+      <span class="lbl">속도</span>
+      <button type="button" id="sp1" aria-pressed="true">보통</button>
+      <button type="button" id="sp2" aria-pressed="false">느리게</button>
+      <button type="button" id="pause" aria-pressed="false">멈춤</button>
+    </div>
+    <div class="steps" id="steps">
+      <div class="st" data-k="pick"><b>①</b>토트에서 하나 꺼내 놓기판에</div>
+      <div class="st" data-k="plate"><b>②</b>놓기판 벨트가 터널로 보냄</div>
+      <div class="st" data-k="scan"><b>③</b>터널 통과 · 카메라 동시 촬영</div>
+      <div class="st" data-k="xfer"><b>④</b>리프트 벨트로 옮겨 탐</div>
+      <div class="st" data-k="lift"><b>⑤</b>리프트가 목적지 층으로</div>
+      <div class="st" data-k="push"><b>⑥</b>AGV 트레이로 밀어 넣음</div>
+    </div>
+    <div class="now" id="now" aria-live="polite"><b>준비</b>곧 첫 상품이 시작돼요.</div>
+  </section>
+
+  <section class="card">
+    <h2>스캔 터널에서 리프트로 넘어가는 순간</h2>
+    <p>비밀은 <b>"벨트 높이를 맞추고, 같이 돌리는 것"</b>이에요. 에스컬레이터에서 바닥으로 내릴 때처럼, 리프트가 받는 높이에서 기다리고 있다가 두 벨트가 같은 속도로 돌면 상품이 이어서 미끄러지지 않고 옮겨 타요. 리프트 위의 짧은 벨트를 <b>벨트 캐리어</b>라고 불러요.</p>
+    <div class="fig">
+      <svg viewBox="0 0 1000 330" role="img" aria-label="놓기판 벨트, 스캔 터널의 두 벨트와 그 사이 틈 아래 카메라, 예외 플랩, 같은 높이에서 기다리는 리프트 벨트 캐리어의 측면 단면도">
+        <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--copper)"/></marker></defs>
+        <line x1="20" y1="300" x2="980" y2="300" stroke="var(--line)" stroke-width="2"/>
+        <!-- 놓기판 -->
+        <rect x="40" y="170" width="200" height="16" rx="8" fill="var(--ink)"/>
+        <circle cx="48" cy="178" r="8" fill="var(--muted)"/><circle cx="232" cy="178" r="8" fill="var(--muted)"/>
+        <text x="140" y="210" font-size="13" text-anchor="middle" font-weight="700">① 놓기판 벨트</text>
+        <text x="140" y="228" font-size="11.5" text-anchor="middle" fill="var(--muted)">높이 85cm · 상품 하나씩</text>
+        <rect x="100" y="140" width="56" height="30" fill="#c8a06a"/>
+        <!-- 터널 -->
+        <rect x="270" y="70" width="290" height="150" rx="14" fill="none" stroke="var(--steel)" stroke-width="3"/>
+        <rect x="260" y="170" width="140" height="16" rx="8" fill="var(--ink)"/>
+        <rect x="420" y="170" width="140" height="16" rx="8" fill="var(--ink)"/>
+        <text x="410" y="62" font-size="13" text-anchor="middle" font-weight="700" fill="var(--steel)">② 스캔 터널 (벨트 2개)</text>
+        <rect x="395" y="78" width="30" height="18" fill="var(--steel)"/><text x="410" y="112" font-size="10.5" text-anchor="middle" fill="var(--muted)">위 카메라</text>
+        <rect x="276" y="120" width="18" height="30" fill="var(--steel)"/>
+        <rect x="536" y="120" width="18" height="30" fill="var(--steel)"/>
+        <text x="300" y="112" font-size="10.5" fill="var(--muted)">옆</text><text x="520" y="112" font-size="10.5" fill="var(--muted)" text-anchor="end">옆</text>
+        <rect x="395" y="236" width="30" height="18" fill="var(--steel)"/>
+        <path d="M410 236 L410 188" stroke="var(--steel)" stroke-dasharray="4 3"/>
+        <text x="410" y="272" font-size="11.5" text-anchor="middle" fill="var(--steel)">아래 카메라: 두 벨트 사이 2cm 틈으로 위를 봄</text>
+        <!-- 플랩 -->
+        <path d="M560 186 L600 186" stroke="var(--bad)" stroke-width="5"/>
+        <path d="M560 186 L586 222" stroke="var(--bad)" stroke-width="3" stroke-dasharray="4 3"/>
+        <rect x="560" y="240" width="70" height="56" fill="var(--bad-soft)" stroke="var(--bad)"/>
+        <text x="595" y="272" font-size="11.5" text-anchor="middle" fill="var(--bad)">예외함</text>
+        <text x="640" y="232" font-size="11" fill="var(--bad)">못 읽으면 플랩이 열려 떨어짐</text>
+        <!-- 리프트 -->
+        <rect x="640" y="20" width="14" height="280" fill="var(--muted)"/><rect x="800" y="20" width="14" height="280" fill="var(--muted)"/>
+        <rect x="604" y="170" width="190" height="16" rx="8" fill="var(--copper)"/>
+        <text x="700" y="160" font-size="13" text-anchor="middle" font-weight="700" fill="var(--copper)">③ 리프트 벨트 캐리어</text>
+        <text x="700" y="44" font-size="11.5" text-anchor="middle" fill="var(--muted)">받을 때는 85cm에서 대기</text>
+        <path d="M700 150 V70" stroke="var(--copper)" stroke-width="2" marker-end="url(#ar)"/>
+        <path d="M720 196 V260" stroke="var(--copper)" stroke-width="2" marker-end="url(#ar)"/>
+        <text x="728" y="252" font-size="11.5" fill="var(--copper)">1층 AGV 높이로</text>
+        <text x="712" y="90" font-size="11.5" fill="var(--copper)">2층 AGV 높이로</text>
+        <!-- AGV -->
+        <rect x="830" y="34" width="130" height="26" rx="6" fill="var(--steel)"/><text x="895" y="52" font-size="11.5" text-anchor="middle" fill="#fff">2층 AGV 트레이</text>
+        <rect x="830" y="262" width="130" height="26" rx="6" fill="var(--steel)"/><text x="895" y="280" font-size="11.5" text-anchor="middle" fill="#fff">1층 AGV 트레이</text>
+        <!-- 흐름 화살표 -->
+        <path d="M160 150 H250" stroke="var(--copper)" stroke-width="2" marker-end="url(#ar)"/>
+        <path d="M480 155 H600" stroke="var(--copper)" stroke-width="2" marker-end="url(#ar)"/>
+        <text x="575" y="148" font-size="11" text-anchor="middle" fill="var(--copper)">같은 높이 · 같은 속도</text>
+      </svg>
+    </div>
+    <div class="tbl"><table>
+      <thead><tr><th>넘어가는 곳</th><th>어떻게</th><th>무엇으로 확인</th></tr></thead>
+      <tbody>
+        <tr><td>놓기판 → 터널</td><td>두 벨트 높이가 같고 끝이 1~2cm 간격. 같은 속도로 돌아요</td><td>터널 입구 광센서 (상품 길이도 잼)</td></tr>
+        <tr><td>터널 안</td><td>벨트 두 개 사이 2cm 틈 아래에서 카메라가 바닥면 라벨을 봐요</td><td>카메라 4~6대가 같은 순간 촬영</td></tr>
+        <tr><td>터널 → 리프트</td><td>리프트가 85cm에서 기다리다, 벨트 캐리어를 터널 벨트와 같이 돌려 받아요</td><td>캐리어 위 광센서 "상품 들어옴"</td></tr>
+        <tr><td>터널 → 예외함</td><td>판정이 "못 읽음"이면 터널 끝 플랩이 아래로 열려 예외함으로 떨어져요</td><td>예외함 센서</td></tr>
+        <tr><td>리프트 → AGV</td><td>목적지 층 높이로 올라간(내려간) 뒤 AGV 도착 신호를 받고 캐리어 벨트를 돌려 밀어 넣어요</td><td>AGV 트레이 센서 → 관제에 "실었음"</td></tr>
+      </tbody>
+    </table></div>
+    <p class="note">리프트는 3D 로더의 Y축(승강) 구조와 같아요. 기둥 2개 + 벨트 구동 + 서보, 원점은 토크 원점. 벨트 캐리어는 TILT 대신 짧은 컨베이어를 단 것이라고 보면 돼요.</p>
+  </section>
+
+  <section class="card">
+    <h2>"작업자 없이 토트에서 하나씩"은 어떻게?</h2>
+    <p>정확하게 짚었어요. 토트에서 상품을 <b>하나만, 망가뜨리지 않고</b> 꺼내는 일은 이 장치에서 가장 어려운 일이고, 기계만으로는 깔끔한 방법이 없어요. 그래서 1단계는 이 일만 사람이 하고, 2단계에서 이 자리를 로봇(갠트리 + 흡착 + 3D 카메라)으로 바꾸는 거예요. <b>놓기판은 "사람 손 → 로봇 손"을 바꿔 끼우는 경계선</b>이에요. 놓기판부터 뒤가 같으니까, 1단계 장치를 팔다가 그 앞에 로봇만 붙이면 2단계가 돼요.</p>
+    <div class="tbl"><table>
+      <thead><tr><th>꺼내는 방법</th><th>어떻게</th><th>화장품 · 섞인 상품</th><th>이 제안에서</th></tr></thead>
+      <tbody>
+        <tr><td>사람</td><td>토트에서 집어 놓기판에 아무 방향으로 놓음</td><td><span class="chip g">가장 확실</span></td><td><span class="chip s">1단계</span> 바코드 · 층 맞추기는 장치가 대신해서 사람이 빨라짐</td></tr>
+        <tr><td>갠트리 + 흡착 로봇</td><td>3D 카메라가 위에서 보고, 맨 위 상품의 평평한 면을 흡착해 하나씩 놓기판에</td><td><span class="chip s">상자 · 화장품 상자 잘 됨</span> 병 · 망 포장은 어려움</td><td><span class="chip g">2단계</span> 토트는 현장 컨베이어로 직접 들어옴</td></tr>
+        <tr><td>기울여 쏟고 진동으로 펼치기</td><td>토트를 기울여 쏟은 뒤 진동판으로 한 겹으로</td><td><span class="chip b">깨짐 · 엉킴</span></td><td>제외 (지난 버전에서 뺌)</td></tr>
+        <tr><td>계단식 싱귤레이터</td><td>속도가 다른 컨베이어 여러 개로 뭉친 것을 간격 벌려 한 줄로</td><td><span class="chip w">택배 상자용</span> 작은 상품은 부적합</td><td>참고만</td></tr>
+      </tbody>
+    </table></div>
+    <div class="callout">
+      <b>2단계에서 토트는 어떻게 들어오나</b>
+      <p>현장의 컨베이어(자동창고나 피킹 구역에서 오는 줄)를 셀 입구에 이어 붙여요. 토트가 집는 위치에 멈추면 갠트리가 다 꺼내고, 빈 토트는 같은 줄의 다른 쪽으로 나가요. 컨베이어가 없는 현장만 버퍼 컨베이어나 기성품 운반 로봇(AMR)을 붙여요.</p>
+    </div>
+  </section>
+
+  <p class="note">3D는 개념 모델이에요(치수 예시: 작업 높이 85cm, 2층 AGV 트레이 약 2m). 실제 소터의 AGV 높이와 정지 위치로 다시 맞춰야 해요.</p>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function css(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+  function $(id){ return document.getElementById(id); }
+  var stage=$('stage');
+  var steps={}; [].forEach.call(document.querySelectorAll('#steps .st'),function(e){ steps[e.getAttribute('data-k')]=e; });
+  var NOW={
+    pick:['① 토트에서 하나 꺼내기','—'],
+    plate:['② 놓기판','놓기판 벨트가 상품을 한 개씩 터널 쪽으로 보내요. 입구 광센서가 상품이 들어오는 순간과 길이를 재요.'],
+    scan:['③ 스캔 터널','위 · 양옆 · 아래(벨트 틈) 카메라가 같은 순간 찍어서 보이는 면의 바코드를 읽어요. 관제에 물어 목적지 층을 정해요.'],
+    xfer:['④ 리프트로 옮겨 타기','리프트가 85cm 받는 높이에서 기다리다, 벨트 캐리어를 터널 벨트와 같은 속도로 돌려 이어 받아요.'],
+    lift:['⑤ 리프트 이동','바코드로 정한 층 높이로 올라가거나 내려가요. 3D 로더 Y축과 같은 구조예요.'],
+    push:['⑥ AGV에 싣기','AGV 도착 신호를 받으면 캐리어 벨트를 돌려 트레이로 밀어 넣어요. 트레이 센서가 "실었음"을 확인해야 AGV가 출발해요.'],
+    bad:['③ 못 읽음 → 예외함','바코드가 0개(또는 2개) 읽혔어요. 추측하지 않고 터널 끝 플랩을 열어 예외함으로 떨어뜨려요. 사람이 나중에 손 스캐너로 처리해요.']
+  };
+  function setNow(k, extra){ for (var s in steps) steps[s].classList.remove('on','bad'); var key=k==='bad'?'scan':k; if (steps[key]){ steps[key].classList.add('on'); if (k==='bad') steps[key].classList.add('bad'); }
+    var t=NOW[k]; $('now').innerHTML='<b></b><span></span>'; $('now').firstChild.textContent=t[0]+(extra?' · '+extra:''); $('now').lastChild.textContent=k==='pick'?(mode===1?'사람이 토트에서 상품 하나를 집어 놓기판에 아무 방향으로 놓아요. 바코드를 찾거나 찍을 필요가 없어요.':'3D 카메라가 토트 안을 보고, 갠트리가 맨 위 상품의 평평한 면을 흡착해 놓기판에 놓아요. 토트는 현장 컨베이어로 들어와요.'):t[1]; }
+
+  if (typeof THREE==='undefined'){ $('fallback').hidden=false; return; }
+  var renderer; try { renderer=new THREE.WebGLRenderer({antialias:true}); } catch(e){ $('fallback').hidden=false; return; }
+  renderer.setPixelRatio(Math.min(2,window.devicePixelRatio||1)); renderer.shadowMap.enabled=true; renderer.outputEncoding=THREE.sRGBEncoding;
+  stage.insertBefore(renderer.domElement, stage.firstChild);
+  var scene=new THREE.Scene(), cam=new THREE.PerspectiveCamera(38,16/9,0.05,60);
+  function bg(){ scene.background=new THREE.Color(css('--grid')||'#E3E9E6'); } bg();
+  scene.add(new THREE.HemisphereLight(0xffffff,0x8a8f94,0.8));
+  var sun=new THREE.DirectionalLight(0xffffff,0.75); sun.position.set(3,7,5); sun.castShadow=true; sun.shadow.mapSize.set(1024,1024);
+  var sc=sun.shadow.camera; sc.left=-6; sc.right=6; sc.top=6; sc.bottom=-6; scene.add(sun);
+  function mat(c,r,m,e){ var o={color:c,roughness:r==null?0.6:r,metalness:m||0}; if(e) o.emissive=e; return new THREE.MeshStandardMaterial(o); }
+  var M={floor:mat(0xbfc6cb,0.95), alu:mat(0xc9ced3,0.35,0.6), dark:mat(0x2a3138,0.5,0.2), belt:mat(0x30363c,0.9), tote:mat(0x2c6fb0,0.55), steel:mat(0x2c5d86,0.5),
+    cam:mat(0x15191c,0.4), copper:mat(0xb4632a,0.5), red:mat(0xc0392b,0.5), redsoft:mat(0xe9b4b4,0.7), agv:mat(0x2c5d86,0.45,0.1), deck:mat(0x9aa3aa,0.7),
+    skin:mat(0xd9c2a8,0.8), shirt:mat(0x5b7083,0.8), glass:new THREE.MeshStandardMaterial({color:0xb9d3ea,transparent:true,opacity:0.35,roughness:0.1}),
+    flash:new THREE.MeshStandardMaterial({color:0xffffff,emissive:0x000000,roughness:0.3}), beam:new THREE.MeshBasicMaterial({color:0xffb000,transparent:true,opacity:0})};
+  function box(w,h,d,m,x,y,z,p){ var b=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m); b.position.set(x,y,z); b.castShadow=true; b.receiveShadow=true; (p||scene).add(b); return b; }
+  function cyl(r,h,m,x,y,z,p,rx,rz){ var c=new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,18),m); c.position.set(x,y,z); if(rx) c.rotation.x=rx; if(rz) c.rotation.z=rz; c.castShadow=true; (p||scene).add(c); return c; }
+  var fl=new THREE.Mesh(new THREE.PlaneGeometry(20,12),M.floor); fl.rotation.x=-Math.PI/2; fl.receiveShadow=true; scene.add(fl);
+
+  var H=0.85;               /* 작업 높이 */
+  var F1=0.55, F2=2.0;      /* AGV 트레이 높이 1층 · 2층 */
+  function legs(x0,x1,z0,z1,h){ [[x0,z0],[x0,z1],[x1,z0],[x1,z1]].forEach(function(q){ box(0.04,h,0.04,M.alu,q[0],h/2,q[1]); }); }
+  function conveyor(x0,x1,w,h,m){ box(x1-x0,0.05,w,m||M.belt,(x0+x1)/2,h-0.025,0); cyl(0.03,w+0.02,M.alu,x0,h-0.025,0,null,Math.PI/2); cyl(0.03,w+0.02,M.alu,x1,h-0.025,0,null,Math.PI/2); legs(x0+0.05,x1-0.05,-w/2+0.03,w/2-0.03,h-0.05); }
+
+  /* 토트 컨베이어 (현장 줄) */
+  var TX0=-4.6, TX1=-2.5, TPICK=-2.95;
+  conveyor(TX0,TX1,0.5,0.75,M.alu);
+  for (var r=TX0+0.1;r<TX1;r+=0.12) cyl(0.022,0.5,M.dark,r,0.74,0,null,Math.PI/2);
+  function makeTote(){ var g=new THREE.Group(); box(0.6,0.02,0.4,M.tote,0,0.01,0,g); box(0.6,0.24,0.02,M.tote,0,0.12,0.19,g); box(0.6,0.24,0.02,M.tote,0,0.12,-0.19,g); box(0.02,0.24,0.4,M.tote,0.29,0.12,0,g); box(0.02,0.24,0.4,M.tote,-0.29,0.12,0,g); scene.add(g); return g; }
+  var tote=makeTote(), tote2=makeTote(); tote.position.set(TPICK,0.775,0); tote2.position.set(-4.1,0.775,0);
+  var COLORS=[0xc8a06a,0xe0b4c8,0x8fb8d8,0xe8e3d0,0xa6c99a,0xd9a066,0xf0f0f0];
+  function newItem(i){ var w=0.08+Math.random()*0.1, h=0.04+Math.random()*0.06, d=0.06+Math.random()*0.08; var m=box(w,h,d,mat(COLORS[i%COLORS.length],0.8),0,0,0); m.userData.h=h; return m; }
+  var inTote=[]; function fillTote(){ inTote.forEach(function(m){ scene.remove(m); }); inTote=[]; for (var i=0;i<6;i++){ var m=newItem(i); m.position.set(TPICK-0.18+(i%3)*0.18, 0.8+m.userData.h/2+Math.floor(i/3)*0.06, -0.08+Math.floor(i/3)*0.15); m.rotation.y=(Math.random()-0.5)*0.6; inTote.push(m); } }
+  fillTote();
+
+  /* 놓기판 */
+  var P0=-2.3, P1=-1.4; conveyor(P0,P1,0.4,H);
+  /* 스캔 터널 : 벨트 2개 + 틈 */
+  var S0=-1.36, SG=-0.86, S1=-0.36; conveyor(S0,SG-0.01,0.4,H); conveyor(SG+0.01,S1,0.4,H);
+  var arch=new THREE.Group(); scene.add(arch);
+  box(0.05,0.62,0.05,M.steel,-0.86,H+0.31,0.3,arch); box(0.05,0.62,0.05,M.steel,-0.86,H+0.31,-0.3,arch); box(1.1,0.05,0.65,M.steel,-0.86,H+0.62,0,arch);
+  box(1.1,0.55,0.02,M.glass,-0.86,H+0.32,0.3,arch); box(1.1,0.55,0.02,M.glass,-0.86,H+0.32,-0.3,arch);
+  var cams=[ box(0.1,0.06,0.08,M.cam,-0.86,H+0.57,0), box(0.06,0.08,0.1,M.cam,-0.86,H+0.2,0.27), box(0.06,0.08,0.1,M.cam,-0.86,H+0.2,-0.27), box(0.1,0.06,0.08,M.cam,-0.86,H-0.28,0) ];
+  var flash=box(1.0,0.02,0.5,M.flash,-0.86,H+0.59,0);
+  var beams=[]; [[0,0.25,0],[0.2,0.2,0.2],[-0.2,0.2,-0.2],[0,-0.25,0]].forEach(function(q){ var bm=new THREE.Mesh(new THREE.ConeGeometry(0.12,0.3,16,1,true),M.beam); bm.position.set(-0.86,H+0.06+q[1]*0.9,q[2]*0.6); bm.rotation.z=0; if (q[1]<0) bm.rotation.x=Math.PI; scene.add(bm); beams.push(bm); });
+  /* 예외 플랩 + 예외함 */
+  var flap=new THREE.Group(); flap.position.set(S1,H-0.03,0); scene.add(flap); box(0.16,0.02,0.38,M.red,0.08,0,0,flap);
+  box(0.4,0.3,0.45,M.redsoft,-0.2,0.15,0.0).position.set(S1+0.1,0.15,0); box(0.36,0.02,0.41,M.red,S1+0.1,0.31,0);
+  /* 리프트 */
+  var LX=0.15;
+  box(0.05,2.5,0.05,M.alu,LX-0.32,1.25,0.28); box(0.05,2.5,0.05,M.alu,LX-0.32,1.25,-0.28); box(0.05,2.5,0.05,M.alu,LX+0.32,1.25,0.28); box(0.05,2.5,0.05,M.alu,LX+0.32,1.25,-0.28);
+  box(0.7,0.05,0.62,M.alu,LX,2.5,0); box(0.16,0.16,0.16,M.dark,LX,2.6,-0.2);
+  var carrier=new THREE.Group(); scene.add(carrier); box(0.56,0.05,0.42,M.copper,0,-0.025,0,carrier); box(0.6,0.03,0.48,M.alu,0,-0.07,0,carrier);
+  cyl(0.03,0.44,M.alu,-0.28,-0.025,0,carrier,Math.PI/2); cyl(0.03,0.44,M.alu,0.28,-0.025,0,carrier,Math.PI/2);
+  var liftY=H; carrier.position.set(LX,liftY,0);
+  /* 2층 데크 */
+  var DECK=F2-0.4;          /* 2층 바닥 윗면 */
+  box(4.2,0.08,2.4,M.deck,2.75,DECK-0.04,0); [[0.75,-1.1],[0.75,1.1],[4.75,-1.1],[4.75,1.1]].forEach(function(q){ box(0.08,DECK-0.08,0.08,M.alu,q[0],(DECK-0.08)/2,q[1]); });
+  /* AGV : 바닥(base)에서 트레이 높이(tray)까지 기둥 */
+  function makeAgv(base,tray){ var g=new THREE.Group(), rel=tray-base; box(0.5,0.18,0.42,M.agv,0,0.09,0,g); [[-0.17,0.17],[0.17,0.17],[-0.17,-0.17],[0.17,-0.17]].forEach(function(q){ cyl(0.04,0.03,M.dark,q[0],0.03,q[1],g,Math.PI/2); });
+    if (rel-0.2>0.02) box(0.05,rel-0.2,0.05,M.alu,0,0.18+(rel-0.2)/2,0,g); box(0.42,0.03,0.36,M.copper,0,rel,0,g); scene.add(g); g.userData.tray=tray; return g; }
+  var agv1=makeAgv(0,F1), agv2=makeAgv(DECK,F2); agv1.position.set(0.82,0,0); agv2.position.set(0.82,DECK,0);
+
+  /* 사람 (1단계) */
+  var person=new THREE.Group(); scene.add(person); person.position.set(-2.62,0,0.62);
+  box(0.36,0.75,0.22,M.shirt,0,1.22,0,person); var head=new THREE.Mesh(new THREE.SphereGeometry(0.11,16,12),M.skin); head.position.set(0,1.72,0); person.add(head);
+  box(0.14,0.8,0.18,M.dark,-0.09,0.42,0,person); box(0.14,0.8,0.18,M.dark,0.09,0.42,0,person);
+  var arm=new THREE.Group(); arm.position.set(0,1.5,-0.12); person.add(arm); box(0.08,0.08,0.6,M.shirt,0,0,-0.3,arm);
+  /* 갠트리 (2단계) */
+  var gantry=new THREE.Group(); scene.add(gantry);
+  [[-3.5,-0.5],[-3.5,0.5],[-1.75,-0.5],[-1.75,0.5]].forEach(function(q){ box(0.06,2.1,0.06,M.alu,q[0],1.05,q[1],gantry); });
+  box(1.8,0.06,0.06,M.alu,-2.62,2.1,0.5,gantry); box(1.8,0.06,0.06,M.alu,-2.62,2.1,-0.5,gantry);
+  var beamY=box(0.08,0.08,1.06,M.steel,-2.9,2.12,0,gantry);
+  var head2=new THREE.Group(); gantry.add(head2); box(0.12,0.12,0.12,M.dark,0,0,0,head2); var rod=box(0.03,0.6,0.03,M.alu,0,-0.33,0,head2); var cup=cyl(0.035,0.04,M.copper,0,-0.65,0,head2);
+  head2.position.set(-2.9,2.05,0);
+  var cam3d=box(0.18,0.06,0.07,M.cam,-2.95,1.75,-0.42,gantry);
+
+  /* 이름표 */
+  var TAGS=[['토트 (현장 컨베이어)',function(){ return [tote.position.x,1.12,0.25]; }],['놓기판',function(){ return [-1.85,H+0.1,0.3]; }],['스캔 터널',function(){ return [-0.86,H+0.75,0]; }],['예외함',function(){ return [S1+0.1,0.42,0.3]; }],['리프트',function(){ return [LX,2.72,0]; }],['1층 AGV',function(){ return [agv1.position.x,F1+0.15,0.3]; }],['2층 AGV',function(){ return [agv2.position.x,F2+0.15,0.3]; }]];
+  var tagEls=TAGS.map(function(t){ var d=document.createElement('div'); d.className='tag'; d.textContent=t[0]; stage.appendChild(d); return d; });
+  var vt=new THREE.Vector3();
+
+  /* 상태 */
+  var mode=2, route='auto', speed=1, paused=false;
+  var item=null, ph='idle', t=0, dur=1, from=null, res=null, count=0, agvT=0;
+  function pickRes(){ if (route==='f1') return 'f1'; if (route==='f2') return 'f2'; if (route==='bad') return 'bad'; count++; return count%5===0?'bad':(count%2?'f2':'f1'); }
+  function lerp(a,b,u){ return a+(b-a)*u; }
+  function ease(u){ u=Math.max(0,Math.min(1,u)); return u<0.5?2*u*u:1-Math.pow(-2*u+2,2)/2; }
+  function start(k,d){ ph=k; t=0; dur=d; }
+  function next(){
+    if (inTote.length===0){ start('tote',2.0); setNow('pick','토트 교체: 빈 토트는 나가고 다음 토트가 컨베이어로 들어옴'); return; }
+    item=inTote.pop(); from=item.position.clone(); res=pickRes(); start('pick',mode===1?1.4:2.2); setNow('pick');
+  }
+  function step(dt){
+    if (paused) return; dt*=speed; t+=dt; var u=Math.min(1,t/dur), e=ease(u);
+    if (ph==='idle'){ if (t>0.6) next(); }
+    else if (ph==='tote'){ tote.position.x=lerp(TPICK,-1.9,e); tote.position.y=0.775; if (u>=1){ tote.position.x=-9; var tmp=tote; tote=tote2; tote2=tmp; tote2.position.set(-4.4,0.775,0); start('toteIn',1.4); } }
+    else if (ph==='toteIn'){ tote.position.x=lerp(-4.1,TPICK,e); if (u>=1){ fillTote(); start('idle',0); } }
+    else if (ph==='pick'){
+      var tx=P0+0.15, ty=H+item.userData.h/2;
+      if (mode===2){
+        var hh=item.userData.h/2+0.67, grabY=from.y+hh, carryY=H+1.05, dropY=ty+hh, hx2, hy2;
+        if (u<0.2){ var a1=ease(u/0.2); hx2=lerp(-2.9,from.x,a1); hy2=lerp(2.05,grabY,a1); }          /* 상품 위로 내려감 */
+        else if (u<0.3){ hx2=from.x; hy2=lerp(grabY,carryY,ease((u-0.2)/0.1)); }                     /* 흡착 후 들어 올림 */
+        else if (u<0.8){ hx2=lerp(from.x,tx,ease((u-0.3)/0.5)); hy2=carryY; }                         /* 놓기판 위로 */
+        else { hx2=tx; hy2=lerp(carryY,dropY,ease((u-0.8)/0.2)); }                                      /* 내려놓기 */
+        head2.position.set(hx2,hy2,0); beamY.position.x=hx2;
+        if (u>=0.2){ item.position.set(hx2, hy2-hh, 0); item.rotation.y*=0.95; }
+      } else {
+        var bx=lerp(from.x,tx,e), by=lerp(from.y,ty,e)+Math.sin(Math.PI*e)*0.35, bz=lerp(from.z,0,e);
+        item.position.set(bx,by,bz); arm.rotation.y=lerp(0.5,-0.6,e); arm.rotation.x=-0.4+Math.sin(Math.PI*e)*0.3;
+      }
+      if (u>=1){ item.position.set(tx,ty,0); item.rotation.set(0,(Math.random()-0.5)*0.8,0); start('plate',1.2); setNow('plate'); }
+    }
+    else if (ph==='plate'){ if (mode===2){ head2.position.y=lerp(head2.position.y,2.05,0.05); }
+      item.position.x=lerp(P0+0.15,S0+0.05,u); if (u>=1){ start('scan',1.6); setNow('scan'); } }
+    else if (ph==='scan'){
+      item.position.x=lerp(S0+0.05,S1-0.08,u);
+      var near=Math.abs(item.position.x-(-0.86))<0.12; M.flash.emissive.setHex(near?0xffffff:0x000000); M.beam.opacity=near?0.35:0;
+      if (u>0.55 && !item.userData.judged){ item.userData.judged=true; if (res==='bad'){ setNow('bad'); } else setNow('scan', res==='f2'?'2층 슈트행':'1층 슈트행'); }
+      if (u>=1){ M.flash.emissive.setHex(0); M.beam.opacity=0; if (res==='bad'){ start('drop',1.0); } else { start('xfer',0.9); setNow('xfer'); } }
+    }
+    else if (ph==='drop'){ flap.rotation.z=-ease(Math.min(1,u*2))*0.9; item.position.x=lerp(S1-0.08,S1+0.1,ease(u)); item.position.y=lerp(H+item.userData.h/2,0.32+item.userData.h/2,ease(Math.max(0,(u-0.2)/0.8))); item.rotation.z=-e*0.6;
+      if (u>=1){ flap.rotation.z=0; scene.remove(item); item=null; start('idle',0); } }
+    else if (ph==='xfer'){ item.position.x=lerp(S1-0.08,LX,e); item.position.y=H+item.userData.h/2; if (u>=1){ start('lift',1.4); setNow('lift', res==='f2'?'2층으로 올라감':'1층으로 내려감'); } }
+    else if (ph==='lift'){ var target=res==='f2'?F2:F1; liftY=lerp(H,target,e); carrier.position.y=liftY; item.position.y=liftY+item.userData.h/2; if (u>=1){ start('push',1.0); setNow('push'); } }
+    else if (ph==='push'){ var ag=res==='f2'?agv2:agv1; item.position.x=lerp(LX,ag.position.x,e); item.position.y=ag.userData.tray+0.015+item.userData.h/2; if (u>=1){ item.userData.agv=ag; start('go',1.6); } }
+    else if (ph==='go'){ var ag2=item.userData.agv; ag2.position.x=lerp(0.82,3.6,ease(Math.min(1,u*1.3))); item.position.x=ag2.position.x; liftY=lerp(liftY,H,0.08); carrier.position.y=liftY;
+      if (u>=1){ scene.remove(item); item=null; ag2.position.x=4.2; ag2.userData.ret=1; start('idle',0); carrier.position.y=liftY=H; } }
+    [agv1,agv2].forEach(function(a){ if (a.userData.ret){ a.position.x=Math.max(0.82,a.position.x-dt*2.2); if (a.position.x<=0.82) a.userData.ret=0; } });
+    if (ph!=='go' && ph!=='lift' && ph!=='push'){ liftY=lerp(liftY,H,0.1); carrier.position.y=liftY; }
+    if (mode===2 && ph!=='pick'){ head2.position.y=lerp(head2.position.y,2.05,0.06); head2.position.x=lerp(head2.position.x,-2.9,0.04); beamY.position.x=head2.position.x; }
+  }
+
+  /* 카메라 */
+  var view={th:-0.55,ph:0.42,r:7.2,tx:-0.9,ty:1.0,tz:0};
+  var VW={vA:{th:-0.55,ph:0.42,r:7.2,tx:-0.9,ty:1.0},vB:{th:-0.25,ph:0.3,r:3.4,tx:-0.3,ty:1.1},vC:{th:-0.9,ph:0.45,r:3.6,tx:-2.5,ty:1.0}};
+  function applyCam(){ cam.position.set(view.tx+view.r*Math.cos(view.ph)*Math.sin(view.th), view.ty+view.r*Math.sin(view.ph), view.tz+view.r*Math.cos(view.ph)*Math.cos(view.th)); cam.lookAt(view.tx,view.ty,view.tz); }
+  Object.keys(VW).forEach(function(k){ $(k).addEventListener('click',function(){ var v=VW[k]; view.th=v.th; view.ph=v.ph; view.r=v.r; view.tx=v.tx; view.ty=v.ty; render(); }); });
+  var drag=null;
+  stage.addEventListener('pointerdown',function(e){ drag={x:e.clientX,y:e.clientY,th:view.th,ph:view.ph}; });
+  stage.addEventListener('pointermove',function(e){ if(!drag) return; view.th=drag.th-(e.clientX-drag.x)*0.008; if (e.pointerType==='mouse') view.ph=Math.max(0.05,Math.min(1.4,drag.ph+(e.clientY-drag.y)*0.006)); render(); });
+  ['pointerup','pointercancel','pointerleave'].forEach(function(n){ stage.addEventListener(n,function(){ drag=null; }); });
+  stage.addEventListener('wheel',function(e){ e.preventDefault(); view.r=Math.max(2,Math.min(14,view.r*(1+Math.sign(e.deltaY)*0.08))); render(); },{passive:false});
+
+  /* 버튼 */
+  function setMode(m){ mode=m; $('m1').setAttribute('aria-pressed',m===1); $('m2').setAttribute('aria-pressed',m===2); person.visible=m===1; gantry.visible=m===2; TAGS[0][0]=m===2?'토트 (현장 컨베이어)':'토트'; tagEls[0].textContent=TAGS[0][0]; }
+  $('m1').addEventListener('click',function(){ setMode(1); }); $('m2').addEventListener('click',function(){ setMode(2); });
+  [].forEach.call(document.querySelectorAll('[data-r]'),function(b){ b.addEventListener('click',function(){ route=b.getAttribute('data-r'); [].forEach.call(document.querySelectorAll('[data-r]'),function(x){ x.setAttribute('aria-pressed',x===b); }); }); });
+  $('sp1').addEventListener('click',function(){ speed=1; this.setAttribute('aria-pressed',true); $('sp2').setAttribute('aria-pressed',false); });
+  $('sp2').addEventListener('click',function(){ speed=0.45; this.setAttribute('aria-pressed',true); $('sp1').setAttribute('aria-pressed',false); });
+  $('pause').addEventListener('click',function(){ paused=!paused; this.setAttribute('aria-pressed',paused); this.textContent=paused?'계속':'멈춤'; });
+
+  function render(){ applyCam(); renderer.render(scene,cam); var rect=stage.getBoundingClientRect();
+    var hot={pick:0,plate:1,scan:2,drop:3,xfer:4,lift:4,push:(res==='f2'?6:5),go:(res==='f2'?6:5)}[ph];
+    tagEls.forEach(function(el,i){ var q=TAGS[i][1](); vt.set(q[0],q[1],q[2]).project(cam); el.style.left=((vt.x+1)/2*rect.width)+'px'; el.style.top=((1-vt.y)/2*rect.height)+'px'; el.hidden=vt.z>1; el.classList.toggle('hot',i===hot); }); }
+  function resize(){ var w=stage.clientWidth,h=stage.clientHeight; if(!w||!h) return; renderer.setSize(w,h,false); cam.aspect=w/h; cam.updateProjectionMatrix(); render(); }
+  window.addEventListener('resize',resize);
+  setMode(2); resize();
+  if (reduce){ speed=0.6; }
+  var last=performance.now();
+  function loop(now){ var dt=Math.min(0.05,(now-last)/1000); last=now; if (!document.hidden){ step(dt); render(); } requestAnimationFrame(loop); }
+  requestAnimationFrame(function(n){ last=n; loop(n); });
+  if (window.matchMedia) window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',function(){ bg(); render(); });
+  window.__flow={state:function(){ return {ph:ph,res:res,inTote:inTote.length,mode:mode}; }};
+})();
+</script>

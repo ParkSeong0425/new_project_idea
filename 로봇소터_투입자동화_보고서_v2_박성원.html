@@ -1,0 +1,672 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<title>로봇소터 투입 자동화 보고서 v2</title>
+<style>
+@page{size:A4 landscape;margin:0}
+:root{--ink:#17202A;--muted:#5B6672;--line:#D5DCE2;--soft:#F2F4F6;--accent:#D99A00;--accent-soft:#FFF3D1;--accent-ink:#5A3F00;
+  --steel:#2C5D86;--steel-soft:#E3EDF5;--good:#2F7D4F;--good-soft:#E1F1E6;--warn:#B9661C;--warn-soft:#F8EBDD;--bad:#B23A3A;--bad-soft:#F6E1E1;--dark:#17212B}
+*{box-sizing:border-box}
+html,body{margin:0;background:#fff;color:var(--ink);font-family:"Malgun Gothic","맑은 고딕","Apple SD Gothic Neo",sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.page{width:297mm;height:210mm;padding:11mm 13mm 9mm;display:flex;flex-direction:column;gap:4.5mm;page-break-after:always;overflow:hidden;position:relative}
+.page:last-child{page-break-after:auto}
+body{counter-reset:pg}.page{counter-increment:pg}.pg::after{content:counter(pg)}
+@media screen{body{background:#dde2e6;padding:16px 0}.page{margin:0 auto 16px;box-shadow:0 2px 10px rgba(0,0,0,.15);background:#fff}}
+.qr{display:grid;grid-template-columns:30mm 1fr;gap:4mm;align-items:center}.qr .code{width:30mm;height:30mm}.qr .code img{width:100%;height:100%;image-rendering:pixelated;display:block}
+.formula{font-family:Consolas,monospace;font-size:11px;background:var(--soft);border-radius:4px;padding:2.5mm 3mm;white-space:pre;line-height:1.5}
+.hd{display:flex;align-items:baseline;gap:10px;border-bottom:2.5px solid var(--dark);padding-bottom:2.5mm}
+.hd .n{font-size:11px;font-weight:700;background:var(--accent-soft);color:var(--accent-ink);padding:1px 7px;border-radius:3px}
+.hd h2{margin:0;font-size:23px}
+.hd .sub{margin-left:auto;font-size:11.5px;color:var(--muted)}
+.ft{position:absolute;left:13mm;right:13mm;bottom:5mm;display:flex;justify-content:space-between;font-size:9.5px;color:var(--muted)}
+.body{flex:1;min-height:0;display:grid;gap:4mm}
+.c2{display:grid;grid-template-columns:1fr 1fr;gap:5mm}
+.c32{display:grid;grid-template-columns:1.35fr 1fr;gap:5mm}
+.c3{display:grid;grid-template-columns:repeat(3,1fr);gap:4mm}
+.box{border:1px solid var(--line);border-radius:5px;padding:3.5mm 4mm;display:flex;flex-direction:column;gap:2.5mm;min-width:0}
+h3{margin:0;font-size:14px}
+p{margin:0;font-size:12px;line-height:1.6}
+table{border-collapse:collapse;width:100%;font-size:11px;line-height:1.45}
+th,td{text-align:left;padding:4.5px 7px;border-bottom:1px solid var(--line);vertical-align:top}
+th{background:var(--soft);font-size:10.5px;color:var(--muted);font-weight:700}
+.tot td{font-weight:700;background:var(--soft)}
+.mono{font-family:Consolas,"Malgun Gothic",monospace}
+.chip{display:inline-block;font-size:10px;font-weight:700;padding:0 6px;border-radius:3px;white-space:nowrap}
+.g{background:var(--good-soft);color:var(--good)} .w{background:var(--warn-soft);color:var(--warn)} .b{background:var(--bad-soft);color:var(--bad)} .s{background:var(--steel-soft);color:var(--steel)} .a{background:var(--accent-soft);color:var(--accent-ink)}
+.call{background:var(--steel-soft);border-radius:5px;padding:3mm 4mm;font-size:12px;line-height:1.6}
+.call.y{background:var(--accent-soft)} .call.r{background:var(--bad-soft)} .call.g{background:var(--good-soft)}
+.call b{color:var(--steel)} .call.y b{color:var(--accent-ink)} .call.r b{color:var(--bad)} .call.g b{color:var(--good)}
+.note{font-size:10.5px;color:var(--muted);border-left:3px solid var(--line);padding-left:8px;line-height:1.5}
+ul{margin:0;padding-left:1.1em;font-size:11.5px;line-height:1.6}
+svg{display:block;width:100%;height:auto}
+svg text{font-family:"Malgun Gothic",sans-serif;fill:var(--ink)}
+.kpi{display:grid;grid-template-columns:repeat(3,1fr);gap:4mm}
+.kpi div{background:var(--dark);color:#fff;border-radius:5px;padding:4mm 5mm}
+.kpi b{display:block;font-size:24px;color:var(--accent)}
+.kpi span{font-size:11.5px}
+.gate{display:inline-block;font-size:10px;font-weight:700;background:var(--dark);color:#fff;border-radius:3px;padding:1px 6px}
+</style></head><body>
+
+<!-- 1 표지 -->
+<section class="page">
+  <p style="font-size:11.5px;color:var(--muted);letter-spacing:.04em">아이디어 제안 2 · 신규 아이템 · HW팀 펌웨어 · 박성원 · 2026-10-26 · 보고서 v2 · 모터 드라이브는 3D 로더(threeD_roder)와 같은 것을 쓰는 것으로 가정</p>
+  <h1 style="margin:0;font-size:34px;line-height:1.25">로봇소터 투입 자동화: 작게 시작해서 로봇까지</h1>
+  <p style="font-size:14.5px;max-width:250mm">로봇소터 앞에서 사람이 상품을 하나씩 집어 바코드를 찍고 올리는 일을 <b>세 단계</b>로 줄여 갑니다. 먼저 <b>데이터로 확인</b>하고, 다음에 <b>AI 없이 사람을 돕는 장치</b>를 팔고, 그 결과가 좋을 때만 <b>로봇 셀</b>로 갑니다. 단계마다 계속할지를 숫자로 정해요.</p>
+  <svg viewBox="0 0 1000 300" role="img" aria-label="세 단계 계단 그림">
+    <rect x="20" y="200" width="300" height="80" rx="6" fill="var(--steel-soft)" stroke="var(--steel)"/>
+    <rect x="340" y="130" width="300" height="150" rx="6" fill="var(--accent-soft)" stroke="var(--accent)"/>
+    <rect x="660" y="40" width="320" height="240" rx="6" fill="var(--good-soft)" stroke="var(--good)"/>
+    <text x="40" y="228" font-size="15" font-weight="700" fill="var(--steel)">0단계 · 데이터</text>
+    <text x="40" y="252" font-size="13">지금 투입 자리에 카메라만</text>
+    <text x="40" y="272" font-size="12" fill="var(--muted)">약 3개월 · 수십~수백만원</text>
+    <text x="360" y="158" font-size="15" font-weight="700" fill="var(--accent-ink)">1단계 · 투입 보조 장치</text>
+    <text x="360" y="182" font-size="13">사람은 놓기만, 바코드·층 맞추기는 장치가</text>
+    <text x="360" y="202" font-size="12" fill="var(--muted)">약 6~9개월 · AI 없음 · 회사 기구·펌웨어</text>
+    <text x="360" y="232" font-size="12">판매 가능한 첫 제품</text>
+    <text x="680" y="68" font-size="15" font-weight="700" fill="var(--good)">2단계 · 로봇 피킹 셀</text>
+    <text x="680" y="92" font-size="13">1단계 장치 앞에 갠트리 피커를 붙임</text>
+    <text x="680" y="112" font-size="12" fill="var(--muted)">AI 비전은 외부 전문 업체와 협력</text>
+    <text x="680" y="142" font-size="12">토트는 현장 컨베이어에서 받음</text>
+    <text x="680" y="162" font-size="12">(토트 운반 로봇은 만들지 않음)</text>
+    <g fill="var(--dark)"><path d="M322 214 l16 -10 v20z"/><path d="M642 144 l16 -10 v20z"/></g>
+    <text x="300" y="192" font-size="11" font-weight="700" text-anchor="end">계속 조건 ①</text>
+    <text x="640" y="122" font-size="11" font-weight="700" text-anchor="end">계속 조건 ②</text>
+  </svg>
+  <div class="kpi">
+    <div><b>수십~수백만원</b><span>0단계 비용 · 카메라와 소형 PC</span></div>
+    <div><b>AI 0개</b><span>1단계 투입 보조 장치 · 기존 3D 로더 기구·드라이브·보드 재사용</span></div>
+    <div><b>멈춰도 남는다</b><span>0단계는 데이터, 1단계는 팔 수 있는 장치가 남음</span></div>
+  </div>
+  <div class="ft"><span>로봇소터 투입 자동화 v2</span><span class="pg"></span></div>
+</section>
+
+<!-- 2 배경 -->
+<section class="page">
+  <div class="hd"><span class="n">01</span><h2>왜 투입 자동화인가</h2><span class="sub">엑셀 1. 제안 배경 및 현장 문제</span></div>
+  <div class="body c2">
+    <div class="box">
+      <h3>지금 사람이 하는 일</h3>
+      <svg viewBox="0 0 520 90"><g font-size="12" text-anchor="middle">
+        <rect x="0" y="20" width="110" height="46" rx="5" fill="var(--soft)"/><text x="55" y="40">토트에서</text><text x="55" y="57">하나 집기</text>
+        <rect x="136" y="20" width="110" height="46" rx="5" fill="var(--soft)"/><text x="191" y="40">돌려 가며</text><text x="191" y="57">바코드 찍기</text>
+        <rect x="272" y="20" width="110" height="46" rx="5" fill="var(--soft)"/><text x="327" y="40">맞는 층</text><text x="327" y="57">AGV에 올리기</text>
+        <rect x="408" y="20" width="110" height="46" rx="5" fill="var(--bad-soft)"/><text x="463" y="40" fill="var(--bad)">반복</text><text x="463" y="57" fill="var(--bad)">하루 종일</text>
+        <path d="M110 43h26M246 43h26M382 43h26" stroke="var(--muted)" stroke-width="2"/></g></svg>
+      <p>로더와 소터가 아무리 빨라도 투입을 사람이 하는 한 사람이 계속 붙어 있어야 하고, 야간 인력은 구하기 어렵습니다. 특히 바코드를 찾아 돌리는 동작과 2단 소터에서 층을 맞추는 동작이 시간을 많이 씁니다.</p>
+      <div class="call y"><b>우리만의 위치.</b> 로봇소터를 우리가 만들기 때문에 투입점(높이, AGV 정지 위치, 관제 연동)을 장치에 맞게 바꿀 수 있습니다. 다른 회사 장치는 남의 소터에 맞춰야 합니다.</div>
+    </div>
+    <div class="box">
+      <h3>인건비 계산</h3>
+      <table>
+        <tr><th>항목</th><th>값</th><th>근거</th></tr>
+        <tr><td>2026 최저임금</td><td class="mono">시급 10,320원 · 월 2,156,880원</td><td>고용노동부 고시</td></tr>
+        <tr><td>24시간 365일 한 자리</td><td class="mono">약 4.2명</td><td>주 168시간 ÷ 40시간</td></tr>
+        <tr><td>1인 월 비용</td><td class="mono">약 260만원</td><td>보험·퇴직금 포함 추정</td></tr>
+        <tr class="tot"><td>한 자리 연 인건비</td><td class="mono">약 1.3억원 이상</td><td>야간 가산 제외</td></tr>
+      </table>
+      <h3>이미 시장에 있는 것</h3>
+      <table>
+        <tr><th>회사</th><th>방식</th><th>우리와 다른 점</th></tr>
+        <tr><td>Berkshire Grey</td><td>로봇 투입 스테이션 (팔 + 흡착)</td><td>대형 시스템, 수억 원대</td></tr>
+        <tr><td>OSARO · Plus One</td><td>로봇 팔 투입, 시간당 1,500개 이상(제조사 주장)</td><td>남의 소터에 맞춤</td></tr>
+        <tr><td>Tompkins Robotics</td><td>Induction Lift (사람이 놓으면 맞는 층으로 올림)</td><td>1단계와 같은 생각 · 해외 제품</td></tr>
+      </table>
+      <p class="note">로봇 팔 셀만 있는 게 아니라, 사람을 돕는 장치도 이미 팔리고 있습니다. 그래서 우리는 쉬운 것(1단계)부터 팝니다.</p>
+    </div>
+  </div>
+  <div class="ft"><span>로봇소터 투입 자동화 v2</span><span class="pg"></span></div>
+</section>
+
+<!-- 3 로드맵 -->
+<section class="page">
+  <div class="hd"><span class="n">02</span><h2>전체 로드맵: 단계마다 계속할지 정한다</h2><span class="sub">엑셀 6. 개발 기간 · 7. 검증</span></div>
+  <div class="body" style="grid-template-rows:auto 1fr">
+    <svg viewBox="0 0 1000 250" role="img" aria-label="단계별 일정과 계속 조건">
+      <g font-size="11" fill="var(--muted)"><text x="200" y="18">0개월</text><text x="340" y="18">3</text><text x="480" y="18">6</text><text x="620" y="18">9</text><text x="760" y="18">12</text><text x="900" y="18">15개월~</text></g>
+      <g stroke="var(--line)"><path d="M200 26V240M340 26V240M480 26V240M620 26V240M760 26V240M900 26V240"/></g>
+      <g font-size="13">
+        <text x="0" y="62" font-weight="700">0단계 데이터 수집</text><rect x="200" y="46" width="140" height="24" rx="4" fill="var(--steel)"/>
+        <text x="0" y="112" font-weight="700">1단계 투입 보조 장치</text><rect x="340" y="96" width="330" height="24" rx="4" fill="var(--accent)"/>
+        <text x="0" y="132" font-size="11" fill="var(--muted)">설계 · 시제품 · 사내 시험 · 고객 1곳 시범</text>
+        <text x="0" y="182" font-weight="700">2단계 로봇 피킹 셀</text><rect x="680" y="166" width="300" height="24" rx="4" fill="var(--good)" opacity=".85"/>
+        <text x="0" y="202" font-size="11" fill="var(--muted)">AI 업체 협력 · 1단계 장치 재사용</text>
+      </g>
+      <g><path d="M340 78 l10 10 l-10 10 l-10 -10z" fill="var(--dark)"/><text x="356" y="92" font-size="11.5" font-weight="700">계속 조건 ①</text>
+      <path d="M672 148 l10 10 l-10 10 l-10 -10z" fill="var(--dark)"/><text x="688" y="162" font-size="11.5" font-weight="700">계속 조건 ②</text></g>
+    </svg>
+    <div class="c3">
+      <div class="box"><h3 style="color:var(--steel)">0단계 · 데이터</h3>
+        <ul><li>지금 사람 투입 자리에 위 카메라 1~2대</li><li>상품 종류 · 크기 · 포장 · 라벨 위치 · 1인 투입 속도 측정</li><li>결과물: "장치·로봇으로 처리 가능한 상품 비율" 보고서</li></ul>
+        <p><span class="gate">계속 조건 ①</span> 바코드 찾기·층 맞추기가 투입 시간의 30% 이상, 또는 로봇 가능 상품 70% 이상</p></div>
+      <div class="box"><h3 style="color:var(--accent-ink)">1단계 · 투입 보조 장치</h3>
+        <ul><li>사람은 상품을 놓기만 → 스캔 터널이 읽음 → 리프트가 맞는 층 AGV에</li><li>AI 없음, 3D 로더 기구·드라이브·보드 재사용</li><li>단독으로 팔 수 있는 제품</li></ul>
+        <p><span class="gate">계속 조건 ②</span> 1인 투입 속도 30% 이상 향상, 고객 1곳 시범 만족, 야간 무인 요구 확인</p></div>
+      <div class="box"><h3 style="color:var(--good)">2단계 · 로봇 피킹 셀</h3>
+        <ul><li>1단계 장치 앞에 갠트리 피커 추가 (스캔·층 투입은 그대로)</li><li>토트는 현장 컨베이어에서 받음</li><li>AI 비전은 외부 업체 협력, 우리는 갠트리·소터 연동·안전</li></ul>
+        <p class="note">2단계 일정·예산은 0·1단계 결과로 다시 잡습니다.</p></div>
+    </div>
+  </div>
+  <div class="ft"><span>로봇소터 투입 자동화 v2</span><span class="pg"></span></div>
+</section>
+
+<!-- 4 0단계 -->
+<section class="page">
+  <div class="hd"><span class="n">03</span><h2>0단계: 지금 투입 자리에서 데이터 모으기</h2><span class="sub">약 3개월 · 부품 수십~수백만원</span></div>
+  <div class="body c32">
+    <div class="box">
+      <svg viewBox="0 0 620 330" role="img" aria-label="사람 투입 자리 위에 카메라를 달고 기존 스캐너 기록을 같이 모으는 그림">
+        <rect x="0" y="0" width="620" height="330" fill="var(--soft)" rx="6"/>
+        <rect x="40" y="200" width="140" height="70" rx="4" fill="#2c6fb0"/><text x="110" y="240" font-size="13" text-anchor="middle" fill="#fff">토트</text>
+        <rect x="200" y="210" width="190" height="16" fill="#9aa4ad"/><text x="295" y="250" font-size="12" text-anchor="middle">투입대 (지금 그대로)</text>
+        <circle cx="300" cy="120" r="22" fill="#c9cfd4"/><rect x="278" y="142" width="44" height="66" rx="10" fill="#c9cfd4"/><text x="300" y="104" font-size="11" text-anchor="middle" fill="var(--muted)">작업자</text>
+        <rect x="430" y="200" width="150" height="50" rx="8" fill="var(--steel)"/><text x="505" y="230" font-size="13" text-anchor="middle" fill="#fff">소터 AGV</text>
+        <circle cx="470" cy="256" r="7" fill="var(--dark)"/><circle cx="540" cy="256" r="7" fill="var(--dark)"/>
+        <rect x="160" y="22" width="70" height="30" rx="4" fill="var(--dark)"/><text x="195" y="42" font-size="11" text-anchor="middle" fill="#fff">카메라 1</text>
+        <path d="M175 52 L90 198 M215 52 L190 198" stroke="var(--accent)" stroke-dasharray="5 4" stroke-width="1.5"/>
+        <rect x="380" y="22" width="70" height="30" rx="4" fill="var(--dark)"/><text x="415" y="42" font-size="11" text-anchor="middle" fill="#fff">카메라 2</text>
+        <path d="M400 52 L330 205 M430 52 L470 198" stroke="var(--accent)" stroke-dasharray="5 4" stroke-width="1.5"/>
+        <rect x="360" y="160" width="50" height="22" rx="3" fill="var(--accent)"/><text x="385" y="176" font-size="10" text-anchor="middle">스캐너</text>
+        <rect x="470" y="80" width="130" height="56" rx="5" fill="#fff" stroke="var(--line)"/><text x="535" y="102" font-size="12" text-anchor="middle" font-weight="700">소형 PC</text><text x="535" y="122" font-size="10.5" text-anchor="middle" fill="var(--muted)">영상 + 스캔 시각 기록</text>
+        <path d="M410 171 H535 V136" stroke="var(--muted)" fill="none"/>
+        <text x="20" y="306" font-size="11" fill="var(--muted)">카메라는 위에서 손과 상품만 보이게 (얼굴 안 찍힘) · 작업자에게 목적 안내 · 사내 협의 후 설치</text>
+      </svg>
+    </div>
+    <div class="box">
+      <h3>재는 것과 쓰임</h3>
+      <table>
+        <tr><th>재는 것</th><th>어떻게</th><th>정하는 것</th></tr>
+        <tr><td>1인 시간당 투입 수</td><td>스캔 시각 간격</td><td>장치·로봇 속도 목표, 회수 기간</td></tr>
+        <tr><td>한 개 투입 시간 나누기</td><td>영상: 집기 / 바코드 찾기 / 층 맞추기 / 올리기</td><td>1단계가 줄일 수 있는 시간</td></tr>
+        <tr><td>상품 종류 비율</td><td>영상 + 상품 마스터</td><td>상자 · 비닐 · 병 · 작은 것 비율</td></tr>
+        <tr><td>라벨 위치</td><td>스캔 순간 사진</td><td>스캔 터널 카메라 수·방향</td></tr>
+        <tr><td>읽기 실패 · 예외</td><td>재스캔 횟수, 손 입력</td><td>예외 라인 크기</td></tr>
+        <tr><td>시간대별 물량</td><td>스캔 기록</td><td>야간 무인 필요성</td></tr>
+      </table>
+      <h3>비용 (추정)</h3>
+      <table>
+        <tr><td>카메라 2대 + 거치대</td><td class="mono">20~150만원</td></tr>
+        <tr><td>소형 PC · 저장장치</td><td class="mono">30~150만원</td></tr>
+        <tr class="tot"><td>합계</td><td class="mono">약 50~300만원</td></tr>
+      </table>
+      <p class="note">인력: 펌웨어 1(본인, 설치·기록) + SW 0.5(분석). 사진은 2단계 AI 학습 데이터로도 씁니다.</p>
+    </div>
+  </div>
+  <div class="ft"><span>로봇소터 투입 자동화 v2</span><span class="pg"></span></div>
+</section>
+
+<!-- 5 1단계 개념 -->
+<section class="page">
+  <div class="hd"><span class="n">04</span><h2>1단계: 투입 보조 장치 · 사람은 놓기만 한다</h2><span class="sub">엑셀 2. 제안 제품 · 3. 주요 기능</span></div>
+  <div class="body" style="grid-template-rows:auto 1fr">
+    <div class="box">
+      <svg viewBox="0 0 1000 270" role="img" aria-label="놓기판, 스캔 터널, 리프트, 1층과 2층 AGV로 이어지는 측면 그림">
+        <rect x="0" y="0" width="1000" height="270" rx="6" fill="var(--soft)"/>
+        <circle cx="70" cy="80" r="20" fill="#c9cfd4"/><rect x="50" y="100" width="40" height="70" rx="10" fill="#c9cfd4"/><text x="70" y="64" font-size="11" text-anchor="middle" fill="var(--muted)">작업자</text>
+        <rect x="110" y="150" width="170" height="10" fill="var(--steel)"/><text x="195" y="182" font-size="12" text-anchor="middle" font-weight="700">① 놓기판</text><text x="195" y="198" font-size="10.5" text-anchor="middle" fill="var(--muted)">아무 방향으로 놓기</text>
+        <rect x="160" y="132" width="40" height="18" fill="#c8a06a"/>
+        <path d="M280 155 H330" stroke="var(--dark)" stroke-width="2"/>
+        <rect x="330" y="80" width="170" height="110" rx="10" fill="#fff" stroke="var(--dark)" stroke-width="2"/>
+        <rect x="335" y="150" width="160" height="8" fill="#b9d3ea"/>
+        <g fill="var(--dark)"><rect x="405" y="84" width="20" height="14"/><rect x="336" y="110" width="14" height="20"/><rect x="480" y="110" width="14" height="20"/><rect x="405" y="166" width="20" height="14"/></g>
+        <text x="415" y="212" font-size="12" text-anchor="middle" font-weight="700">② 스캔 터널</text><text x="415" y="228" font-size="10.5" text-anchor="middle" fill="var(--muted)">위·아래·옆 카메라 4~6대 + 조명</text>
+        <path d="M500 155 H560" stroke="var(--dark)" stroke-width="2"/>
+        <rect x="560" y="40" width="16" height="190" fill="#9aa4ad"/><rect x="590" y="40" width="16" height="190" fill="#9aa4ad"/>
+        <rect x="570" y="110" width="120" height="12" fill="var(--accent)"/><text x="640" y="104" font-size="10.5" text-anchor="middle">벨트 캐리어</text>
+        <text x="583" y="252" font-size="12" text-anchor="middle" font-weight="700">③ 리프트</text><text x="583" y="266" font-size="10.5" text-anchor="middle" fill="var(--muted)">로더 Y축 구조 재사용</text>
+        <path d="M640 116 l0 -40" stroke="var(--accent)" stroke-width="2" marker-end="url(#m1)"/>
+        <rect x="720" y="50" width="250" height="10" fill="#9aa4ad"/><text x="845" y="44" font-size="11" text-anchor="middle">2층 소터</text>
+        <rect x="740" y="20" width="110" height="28" rx="6" fill="var(--steel)"/><text x="795" y="39" font-size="11" text-anchor="middle" fill="#fff">AGV</text>
+        <rect x="720" y="200" width="250" height="10" fill="#9aa4ad"/><text x="845" y="226" font-size="11" text-anchor="middle">1층 소터</text>
+        <rect x="740" y="170" width="110" height="28" rx="6" fill="var(--steel)"/><text x="795" y="189" font-size="11" text-anchor="middle" fill="#fff">AGV</text>
+        <text x="900" y="120" font-size="12" text-anchor="middle" font-weight="700">④ 맞는 층</text><text x="900" y="136" font-size="10.5" text-anchor="middle" fill="var(--muted)">AGV에 넘김</text>
+        <rect x="430" y="232" width="90" height="28" rx="4" fill="var(--bad-soft)" stroke="var(--bad)"/><text x="475" y="251" font-size="11" text-anchor="middle" fill="var(--bad)">예외함</text>
+        <path d="M455 190 V230" stroke="var(--bad)" stroke-dasharray="4 3"/>
+        <defs><marker id="m1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--accent)"/></marker></defs>
+      </svg>
+    </div>
+    <div class="c3">
+      <div class="box"><h3>사람이 안 해도 되는 것</h3><ul><li>바코드를 찾아 상품을 돌리기</li><li>손 스캐너 들고 찍기</li><li>2단 소터에서 층 맞추기 · 허리 굽히기</li></ul><p>사람은 토트에서 집어 놓기판에 놓기만 합니다.</p></div>
+      <div class="box"><h3>장치가 하는 것</h3><ul><li>스캔 터널이 6면 중 보이는 면을 동시에 읽음</li><li>관제에 바코드 조회 → 목적지 층 결정</li><li>리프트가 그 층 높이로 올려 AGV 트레이에 밀어 넣음</li><li>못 읽으면 예외함, 작업자에게 불빛으로 알림</li></ul></div>
+      <div class="box"><h3>왜 첫 제품으로 좋은가</h3><ul><li>AI가 필요 없음 (바코드는 정해진 계산)</li><li>기구·드라이브·펌웨어 대부분이 3D 로더와 같은 기술</li><li>2단계 로봇 셀의 스캔·투입부를 그대로 재사용</li></ul></div>
+    </div>
+  </div>
+  <div class="ft"><span>로봇소터 투입 자동화 v2</span><span class="pg"></span></div>
+</section>
+
+<!-- 5-1 넘어가는 순간 -->
+<section class="page">
+  <div class="hd"><span class="n">04-1</span><h2>1단계: 스캔 터널에서 리프트로 넘어가는 순간</h2><span class="sub">벨트 높이를 맞추고, 같은 속도로 같이 돌린다</span></div>
+  <div class="body c32">
+    <div class="box">
+      <svg viewBox="0 0 1000 330" role="img" aria-label="놓기판 벨트, 스캔 터널 두 벨트와 틈 아래 카메라, 예외 플랩, 85cm에서 기다리는 리프트 벨트 캐리어 측면도">
+        <line x1="20" y1="300" x2="980" y2="300" stroke="var(--line)" stroke-width="2"/>
+        <rect x="40" y="170" width="200" height="16" rx="8" fill="var(--dark)"/><circle cx="48" cy="178" r="8" fill="var(--muted)"/><circle cx="232" cy="178" r="8" fill="var(--muted)"/>
+        <text x="140" y="210" font-size="14" text-anchor="middle" font-weight="700">① 놓기판 벨트</text><text x="140" y="230" font-size="12" text-anchor="middle" fill="var(--muted)">높이 85cm</text>
+        <rect x="100" y="140" width="56" height="30" fill="#c8a06a"/>
+        <rect x="270" y="70" width="290" height="150" rx="14" fill="none" stroke="var(--steel)" stroke-width="3"/>
+        <rect x="260" y="170" width="140" height="16" rx="8" fill="var(--dark)"/><rect x="420" y="170" width="140" height="16" rx="8" fill="var(--dark)"/>
+        <text x="410" y="60" font-size="14" text-anchor="middle" font-weight="700" fill="var(--steel)">② 스캔 터널 (벨트 2개)</text>
+        <rect x="395" y="78" width="30" height="18" fill="var(--steel)"/><rect x="276" y="120" width="18" height="30" fill="var(--steel)"/><rect x="536" y="120" width="18" height="30" fill="var(--steel)"/>
+        <rect x="395" y="236" width="30" height="18" fill="var(--steel)"/><path d="M410 236 L410 188" stroke="var(--steel)" stroke-dasharray="4 3"/>
+        <text x="410" y="275" font-size="12" text-anchor="middle" fill="var(--steel)">아래 카메라: 두 벨트 사이 2cm 틈으로 위를 봄</text>
+        <path d="M560 186 L600 186" stroke="var(--bad)" stroke-width="5"/><path d="M560 186 L586 222" stroke="var(--bad)" stroke-width="3" stroke-dasharray="4 3"/>
+        <rect x="560" y="240" width="70" height="56" fill="var(--bad-soft)" stroke="var(--bad)"/><text x="595" y="273" font-size="12" text-anchor="middle" fill="var(--bad)">예외함</text>
+        <rect x="640" y="20" width="14" height="280" fill="var(--muted)"/><rect x="800" y="20" width="14" height="280" fill="var(--muted)"/>
+        <rect x="604" y="170" width="190" height="16" rx="8" fill="#B4632A"/>
+        <text x="700" y="160" font-size="13.5" text-anchor="middle" font-weight="700" fill="#B4632A">③ 리프트 벨트 캐리어</text>
+        <text x="700" y="44" font-size="12" text-anchor="middle" fill="var(--muted)">받을 때는 85cm에서 대기</text>
+        <path d="M700 150 V74" stroke="#B4632A" stroke-width="2"/><path d="M693 80 l7 -12 l7 12z" fill="#B4632A"/>
+        <path d="M720 196 V258" stroke="#B4632A" stroke-width="2"/><path d="M713 252 l7 12 l7 -12z" fill="#B4632A"/>
+        <rect x="830" y="34" width="130" height="26" rx="6" fill="var(--steel)"/><text x="895" y="52" font-size="12" text-anchor="middle" fill="#fff">2층 AGV 트레이</text>
+        <rect x="830" y="262" width="130" height="26" rx="6" fill="var(--steel)"/><text x="895" y="280" font-size="12" text-anchor="middle" fill="#fff">1층 AGV 트레이</text>
+        <text x="575" y="150" font-size="12" text-anchor="middle" fill="#B4632A">같은 높이 · 같은 속도</text>
+      </svg>
+      <table>
+        <tr><th>넘어가는 곳</th><th>어떻게</th><th>확인</th></tr>
+        <tr><td>터널 → 리프트</td><td>리프트가 85cm에서 기다리다, 캐리어 벨트를 터널 벨트와 같이 돌려 이어 받음</td><td>캐리어 광센서</td></tr>
+        <tr><td>터널 → 예외함</td><td>"못 읽음"이면 터널 끝 플랩이 아래로 열림</td><td>예외함 센서</td></tr>
+        <tr><td>리프트 → AGV</td><td>목적지 층 높이로 이동 → AGV 도착 신호 → 캐리어 벨트로 밀어 넣음</td><td>AGV 트레이 센서</td></tr>
+      </table>
+    </div>
+    <div class="box">
+      <h3>3D로 보기</h3>
+      <div class="qr"><div class="code"><img id="q1" alt="투입 흐름 3D QR"></div><p><b>투입 흐름 3D</b><br>토트 → 놓기판 → 스캔 터널 → 리프트 → 1·2층 AGV. 1단계(사람) · 2단계(갠트리), 못 읽은 상품의 예외함 경로까지.</p></div>
+      <div class="qr"><div class="code"><img id="q2" alt="설계표 QR"></div><p><b>갠트리 셀 설계표</b><br>모터 계산, 사이클 타임, 데이터 구조, 마진.</p></div>
+      <div class="call y"><b>리프트 = 3D 로더 Y축.</b> 기둥 2개 + 벨트 구동 + 서보(감속 5, 1회전 160mm), 원점은 토크 원점 코드 그대로입니다. 로더의 TILT 자리에 짧은 컨베이어를 단 것이라고 보면 됩니다.</div>
+      <p class="note">공유 설정을 켜 두어야 다른 사람이 QR로 열 수 있습니다.</p>
+    </div>
+  </div>
+  <div class="ft"><span>로봇소터 투입 자동화 v2</span><span class="pg"></span></div>
+</section>
+
+<!-- 6 1단계 확인 규칙 -->
+<section class="page">
+  <div class="hd"><span class="n">05</span><h2>1단계: 바코드 확인과 잘못 보내지 않는 규칙</h2><span class="sub">원칙: 놓기 전에 확인 · 추측하지 않는다</span></div>
+  <div class="body c2">
+    <div class="box">
+      <h3>상품 하나가 지나가는 순서</h3>
+      <table>
+        <tr><th>단계</th><th>확인</th><th>아니면</th></tr>
+        <tr><td>1. 놓기판에 놓임</td><td>놓기판 센서가 상품 감지</td><td>—</td></tr>
+        <tr><td>2. 스캔 터널 통과</td><td>바코드가 <b>정확히 1개</b> 읽힘 (13자리 + 검증 숫자)</td><td><span class="chip b">0개 · 2개 이상 → 예외함</span></td></tr>
+        <tr><td>3. 관제 조회</td><td>소터 작업 목록에 있는 바코드</td><td><span class="chip b">없음 → 예외함</span></td></tr>
+        <tr><td>4. 무게 확인 (선택)</td><td>놓기판 로드셀 무게가 상품 마스터 ±20%</td><td><span class="chip b">다름 → 예외함 (두 개 겹침)</span></td></tr>
+        <tr><td>5. AGV 도착</td><td>관제가 "투입 위치에 AGV 도착" 신호 (TCP)</td><td><span class="chip w">대기</span></td></tr>
+        <tr><td>6. 넘김 후 확인</td><td>AGV 트레이 센서로 상품 있음</td><td><span class="chip b">없음 → AGV 출발 안 함 · 알림</span></td></tr>
+      </table>
+      <div class="call r"><b>소터에는 확인된 상품만.</b> 장치 안에서는 "이 칸의 상품 = 이 바코드"로만 연결하고, 상품이 칸에서 사라지거나 순서가 어긋나면 연결을 지우고 예외함으로 보냅니다.</div>
+    </div>
+    <div class="box">
+      <h3>라벨 상태별</h3>
+      <table>
+        <tr><th>라벨</th><th>방법</th><th>추가 시간</th></tr>
+        <tr><td>윗면</td><td>위 카메라</td><td class="mono">0초</td></tr>
+        <tr><td>아랫면</td><td>유리 놓기판 아래 카메라</td><td class="mono">0초</td></tr>
+        <tr><td>옆면</td><td>옆 카메라 · 45° 거울</td><td class="mono">0초</td></tr>
+        <tr><td>비닐 반사</td><td>편광 필터 + 조명 2개 번갈아</td><td class="mono">0초</td></tr>
+        <tr><td>구겨짐 · 가려짐</td><td>예외함 → 작업자가 손 스캐너로 처리</td><td>—</td></tr>
+      </table>
+      <h3>해상도 계산</h3>
+      <p>바코드 막대 0.264mm(80% 축소 인쇄 기준)를 2화소로 보려면, 300 × 200mm 범위에 가로 약 2,300화소(5MP)가 필요합니다. 읽기 소프트웨어는 공개 라이브러리(ZXing-C++)로 시작하고, 읽기율이 부족하면 상용 디코더로 바꿉니다.</p>
+      <p class="note">0단계 라벨 위치 조사에서 "어느 면에 라벨이 많은지"를 보고 카메라 수(4~6대)를 정합니다. 상용 스캔 터널(Cognex, Keyence 등)은 견적으로 비교합니다.</p>
+    </div>
+  </div>
+  <div class="ft"><span>로봇소터 투입 자동화 v2</span><span class="pg"></span></div>
+</section>
+
+<!-- 7 1단계 전장 · 비용 -->
+<section class="page">
+  <div class="hd"><span class="n">06</span><h2>1단계: 보드 · 전장 구성과 비용</h2><span class="sub">3D 로더 보드(STM32G473) 재사용</span></div>
+  <div class="body c2">
+    <div class="box">
+      <svg viewBox="0 0 560 300" role="img" aria-label="제어 보드가 RS485로 리프트와 벨트 드라이브를, 이더넷으로 바코드 PC와 소터 관제를 연결">
+        <g font-size="11.5">
+          <rect x="0" y="20" width="150" height="38" rx="4" fill="var(--steel-soft)" stroke="var(--steel)"/><text x="75" y="44" text-anchor="middle">리프트 드라이브</text>
+          <rect x="0" y="70" width="150" height="38" rx="4" fill="var(--steel-soft)" stroke="var(--steel)"/><text x="75" y="94" text-anchor="middle">벨트 캐리어 드라이브</text>
+          <rect x="0" y="120" width="150" height="38" rx="4" fill="var(--steel-soft)" stroke="var(--steel)" stroke-dasharray="4 3"/><text x="75" y="144" text-anchor="middle">놓기판 컨베이어 (선택)</text>
+        </g>
+        <path d="M150 39H180V139H150M150 89H180M180 110H210" stroke="var(--steel)" stroke-width="2" fill="none"/>
+        <text x="195" y="104" font-size="10" text-anchor="middle" fill="var(--steel)">RS485</text>
+        <rect x="210" y="80" width="150" height="70" rx="5" fill="var(--dark)"/><text x="285" y="108" font-size="12.5" text-anchor="middle" fill="#fff" font-weight="700">제어 보드</text><text x="285" y="128" font-size="10.5" text-anchor="middle" fill="#fff">STM32G473 (로더 보드)</text>
+        <rect x="400" y="20" width="160" height="60" rx="5" fill="#fff" stroke="var(--dark)"/><text x="480" y="44" font-size="12" text-anchor="middle" font-weight="700">바코드 PC</text><text x="480" y="62" font-size="10.5" text-anchor="middle" fill="var(--muted)">카메라 4~6대 · 디코더</text>
+        <path d="M360 100H380V50H400" stroke="var(--dark)" fill="none"/><text x="378" y="44" font-size="10" fill="var(--muted)">Ethernet</text>
+        <rect x="400" y="120" width="160" height="60" rx="5" fill="#fff" stroke="var(--dark)"/><text x="480" y="144" font-size="12" text-anchor="middle" font-weight="700">소터 관제</text><text x="480" y="162" font-size="10.5" text-anchor="middle" fill="var(--muted)">바코드 → 슈트 · AGV 도착</text>
+        <path d="M360 130H400" stroke="var(--dark)"/><text x="380" y="124" font-size="10" text-anchor="middle" fill="var(--muted)">TCP</text>
+        <rect x="170" y="200" width="230" height="80" rx="5" fill="var(--soft)"/>
+        <text x="285" y="222" font-size="11.5" text-anchor="middle" font-weight="700">GPIO · ADC</text>
+        <text x="285" y="242" font-size="10.5" text-anchor="middle">놓기판 · 칸 · 트레이 센서, 로드셀</text>
+        <text x="285" y="260" font-size="10.5" text-anchor="middle">작업자 불빛 · 비상정지 · 경광등</text>
+        <path d="M285 150V200" stroke="var(--dark)"/>
+      </svg>
+      <p class="note">제어 보드는 3D 로더 보드(Modbus 드라이브, W6100 TCP, FRAM, 진단 펌웨어)를 그대로 씁니다. 비상정지는 하드웨어로 드라이브 토크를 끊습니다.</p>
+    </div>
+    <div class="box">
+      <h3>1대 재료비 (추정)</h3>
+      <table>
+        <tr><th>구성</th><th>내용</th><th>금액</th></tr>
+        <tr><td>놓기판 · 스캔 터널 프레임</td><td>유리판, 프로파일, 조명</td><td class="mono">100~250만원</td></tr>
+        <tr><td>스캔 카메라</td><td>5MP급 4~6대, 편광 필터</td><td class="mono">200~550만원</td></tr>
+        <tr><td>바코드 PC</td><td>산업용 PC</td><td class="mono">100~200만원</td></tr>
+        <tr><td>리프트 · 벨트 캐리어</td><td>로더 Y축 구조, 드라이브 2</td><td class="mono">300~600만원</td></tr>
+        <tr><td>제어 보드</td><td>로더 보드 + I/O</td><td class="mono">30~80만원</td></tr>
+        <tr><td>센서 · 로드셀 · 안전</td><td>칸·트레이 센서, 비상정지</td><td class="mono">50~150만원</td></tr>
+        <tr><td>제어반 · 배선</td><td>—</td><td class="mono">80~200만원</td></tr>
+        <tr class="tot"><td>합계</td><td></td><td class="mono">약 860~2,030만원</td></tr>
+      </table>
+      <h3>개발 인력 · 기간</h3>
+      <p>기구 1 · 펌웨어 1(본인: 리프트 축 제어, 순서, 센서) · SW 1(바코드 PC, 관제 연동). 설계 2개월 → 시제품 3개월 → 사내 시험 1~2개월 → 고객 1곳 시범 1~2개월, <b>약 6~9개월</b>.</p>
+    </div>
+  </div>
+  <div class="ft"><span>로봇소터 투입 자동화 v2</span><span class="pg"></span></div>
+</section>
+
+<!-- 8 2단계 -->
+<section class="page">
+  <div class="hd"><span class="n">07</span><h2>2단계: 로봇 피킹 셀 · 1단계 장치 앞에 팔을 붙인다</h2><span class="sub">계속 조건 ② 통과 시</span></div>
+  <div class="body c32">
+    <div class="box">
+      <svg viewBox="0 0 640 330" role="img" aria-label="현장 컨베이어로 온 토트에서 갠트리가 하나씩 집어 1단계 장치의 놓기판에 놓는 평면도">
+        <rect x="0" y="0" width="640" height="330" rx="6" fill="var(--soft)"/>
+        <rect x="20" y="200" width="200" height="60" fill="#fff" stroke="var(--line)"/>
+        <g fill="#2c6fb0"><rect x="30" y="210" width="40" height="40" rx="3"/><rect x="80" y="210" width="40" height="40" rx="3"/><rect x="130" y="210" width="40" height="40" rx="3"/></g>
+        <text x="120" y="282" font-size="11.5" text-anchor="middle">현장 컨베이어로 토트 도착</text>
+        <rect x="230" y="190" width="80" height="80" rx="4" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="270" y="234" font-size="11" text-anchor="middle">집는 곳</text>
+        <rect x="200" y="40" width="300" height="250" fill="none" stroke="var(--steel)" stroke-dasharray="4 3"/>
+        <path d="M200 40H500M200 290H500" stroke="var(--steel)" stroke-width="6"/><path d="M340 40V290" stroke="var(--steel)" stroke-width="8"/>
+        <circle cx="340" cy="200" r="12" fill="var(--steel)"/><text x="360" y="204" font-size="11" fill="var(--steel)">흡착 헤드</text>
+        <rect x="245" y="80" width="50" height="22" fill="var(--dark)"/><text x="270" y="96" font-size="10" text-anchor="middle" fill="#fff">3D cam</text>
+        <rect x="400" y="120" width="210" height="110" rx="6" fill="#fff" stroke="var(--dark)" stroke-width="2"/>
+        <text x="505" y="150" font-size="12.5" text-anchor="middle" font-weight="700">1단계 장치 그대로</text>
+        <text x="505" y="172" font-size="11" text-anchor="middle">놓기판 → 스캔 터널</text>
+        <text x="505" y="190" font-size="11" text-anchor="middle">→ 리프트 → 맞는 층 AGV</text>
+        <path d="M352 200 H398" stroke="var(--accent)" stroke-width="2"/>
+        <rect x="20" y="40" width="160" height="110" rx="4" fill="#fff" stroke="var(--line)"/><text x="100" y="64" font-size="12" text-anchor="middle" font-weight="700">빈 토트 배출</text><text x="100" y="84" font-size="10.5" text-anchor="middle" fill="var(--muted)">현장 컨베이어로 돌려보냄</text>
+        <text x="320" y="318" font-size="11" text-anchor="middle" fill="var(--muted)">토트 운반 로봇(AMR)은 만들지 않음 · 컨베이어 없는 현장은 버퍼 컨베이어 또는 기성 AMR</text>
+      </svg>
+    </div>
+    <div class="box">
+      <h3>새로 붙는 것</h3>
+      <table>
+        <tr><th>구성</th><th>내용</th></tr>
+        <tr><td>갠트리 X·Y·Z·R</td><td>모터 4~5개, 3D 로더 드라이브·원점 코드 재사용, Z 브레이크</td></tr>
+        <tr><td>흡착 헤드</td><td>벨로즈 컵 3~4종 자동 교체, 진공 압력 센서</td></tr>
+        <tr><td>3D 카메라 + AI 컴퓨터</td><td>토트 사진에서 상품 하나씩 나누기</td></tr>
+        <tr><td>안전</td><td>펜스, 라이트 커튼, 안전 릴레이</td></tr>
+      </table>
+      <h3>AI는 한 곳, 외부 협력</h3>
+      <p>섞인 토트 사진에서 "여기가 상품 하나"를 나누는 모델 1개만 필요합니다. 바코드·무게·잡았는지는 규칙입니다. 비전 AI는 국내 피스피킹 비전 업체와 협력하고, 우리는 갠트리 · 소터 연동 · 안전을 맡습니다. 학습 사진은 0단계에서 모은 것을 씁니다.</p>
+      <h3>상품별</h3>
+      <p>상자 · 화장품 상자부터 시작하고, 비닐 · 병 · 3cm 미만 · 3kg 초과는 상품 마스터로 사람 라인에 보냅니다(처음 목표: 로봇 라인 상품 잡기 성공 90~95%).</p>
+      <p class="note">추가 재료비(1단계 장치 제외) 약 1,500~3,500만원 추정. 일정·예산은 0·1단계 결과로 확정.</p>
+    </div>
+  </div>
+  <div class="ft"><span>로봇소터 투입 자동화 v2</span><span class="pg"></span></div>
+</section>
+
+<!-- 8-1 모터 -->
+<section class="page">
+  <div class="hd"><span class="n">07-1</span><h2>2단계: 모터는 3D 로더 드라이브로</h2><span class="sub">threeD_roder 코드 값으로 계산 · 정격 토크는 데이터시트로 확인</span></div>
+  <div class="body">
+    <div class="formula">힘 F = 질량 × 가속도(3m/s²) + 마찰 (+ 위아래 축은 질량 × 9.8)
+토크 T = F × (1회전에 가는 거리 ÷ 2π) × 여유 1.5
+로더 값: X 풀리 1회전 100mm · 최대 500rpm · 1회전 10,000펄스 / Y 감속 5 · 1회전 160mm · 최대 3000rpm / TILT 감속 20</div>
+    <table>
+      <tr><th>축</th><th>움직이는 것</th><th>계산</th><th>필요 토크</th><th>쓰는 드라이브 (3D 로더)</th><th>로더에서 가져오는 코드</th></tr>
+      <tr><td><b>X</b> 1.6m</td><td>Y 빔 + 헤드 약 15kg</td><td class="mono">15×3+15 = 60N</td><td class="mono">1.4Nm</td><td>X 드라이브 2대 (로더 ID3 · ID4와 같은 것)</td><td>ID0 브로드캐스트로 두 모터 동시 출발 · 정지</td></tr>
+      <tr><td><b>Y</b> 1.0m</td><td>헤드 캐리지 약 6kg</td><td class="mono">6×3+8 = 26N</td><td class="mono">0.6Nm</td><td>X 드라이브 1대</td><td>IM_Move · IM_Arrive</td></tr>
+      <tr><td><b>Z</b> 0.6m</td><td>막대 + 헤드 + 상품 3kg, 약 6kg</td><td class="mono">6×9.8+6×3 = 77N</td><td class="mono">0.6Nm</td><td>Y 서보 + 감속 5, <b>브레이크</b> (로더 ID1과 같은 것)</td><td>토크 원점 AM_Home, AM_Arrive</td></tr>
+      <tr><td><b>R</b> 회전</td><td>흡착 헤드</td><td>관성 작음</td><td class="mono">작음</td><td>TILT 드라이브 + 감속 20 (로더 ID2)</td><td>TM_Move · TM_Arrive (각도)</td></tr>
+      <tr><td><b>리프트</b> 1.5m</td><td>캐리어 8kg + 상품 3kg</td><td class="mono">11×9.8+11×2 = 130N</td><td class="mono">1.0Nm</td><td>Y 서보 + 감속 5, <b>브레이크</b></td><td>로더 Y 승강 그대로</td></tr>
+      <tr><td>벨트 · 컨베이어</td><td>캐리어 1, 놓기판 · 터널 3, 토트 2~3</td><td colspan="2">속도 · 켜고 끄기</td><td>24V BLDC · 모터 롤러 (I/O 제어)</td><td>—</td></tr>
+      <tr class="tot"><td>합계</td><td colspan="5">로더 계열 드라이브 6개 (X형 3 · Y형 2 · TILT형 1) + 소형 모터 4~6 + 예외 플랩 1</td></tr>
+    </table>
+    <div class="c2">
+      <div class="call y"><b>버스 2개로 나누기.</b> 드라이브 6개를 한 줄에 달면 한 바퀴 묻는 데 약 27ms(6 × 4.5ms). 버스 A = X1 · X2 · Y · Z · R, 버스 B = 리프트. 로더 보드(STM32G473)의 남는 UART에 RS485 칩 1개만 더 붙입니다.</div>
+      <div class="call"><b>같은 드라이브를 쓰는 이득.</b> 펌웨어(원점 · 이동 · 도착 · 알람 · 브로드캐스트)와 예비품을 로더와 공유하고, 아이디어 1의 진단(두 모터 차이 · 도착 시간 · 보드 건강)이 셀에도 그대로 붙습니다. 도착 판정 오차만 로더 10mm → 셀 ±2mm로 따로 정합니다.</div>
+    </div>
+  </div>
+  <div class="ft"><span>로봇소터 투입 자동화 v2</span><span class="pg"></span></div>
+</section>
+
+<!-- 8-2 사이클 -->
+<section class="page">
+  <div class="hd"><span class="n">07-2</span><h2>2단계: 한 개에 몇 초 · 사이클 타임</h2><span class="sub">갠트리 · 벨트 · 리프트가 겹쳐서 일한다</span></div>
+  <div class="body">
+    <svg viewBox="0 0 1000 260" role="img" aria-label="갠트리, 놓기판과 터널, 리프트가 상품을 겹쳐 처리하는 시간표">
+      <g font-size="13"><text x="0" y="62" font-weight="700">갠트리</text><text x="0" y="122" font-weight="700">놓기판 · 터널</text><text x="0" y="182" font-weight="700">리프트 (2층행)</text></g>
+      <g transform="translate(140 0)">
+        <g font-size="11" fill="var(--muted)"><text x="0" y="24">0초</text><text x="200" y="24">2</text><text x="400" y="24">4</text><text x="600" y="24">6</text><text x="800" y="24">8</text></g>
+        <g stroke="var(--line)"><path d="M0 30V220M200 30V220M400 30V220M600 30V220M800 30V220"/></g>
+        <rect x="0" y="45" width="320" height="26" rx="4" fill="var(--steel)"/><text x="160" y="63" font-size="12" text-anchor="middle" fill="#fff">상품 1 집기 · 놓기 3.2초</text>
+        <rect x="320" y="45" width="320" height="26" rx="4" fill="var(--steel)" opacity=".75"/><text x="480" y="63" font-size="12" text-anchor="middle" fill="#fff">상품 2</text>
+        <rect x="640" y="45" width="210" height="26" rx="4" fill="var(--steel)" opacity=".55"/><text x="745" y="63" font-size="12" text-anchor="middle" fill="#fff">상품 3</text>
+        <rect x="320" y="105" width="160" height="26" rx="4" fill="var(--accent)"/><text x="400" y="123" font-size="11.5" text-anchor="middle">1: 1.6초</text>
+        <rect x="640" y="105" width="160" height="26" rx="4" fill="var(--accent)" opacity=".75"/><text x="720" y="123" font-size="11.5" text-anchor="middle">2: 1.6초</text>
+        <rect x="480" y="165" width="40" height="26" fill="var(--good)"/><rect x="520" y="165" width="150" height="26" fill="var(--good)" opacity=".8"/><rect x="670" y="165" width="50" height="26" fill="var(--good)"/><rect x="720" y="165" width="130" height="26" fill="var(--good)" opacity=".55"/>
+        <text x="595" y="183" font-size="11.5" text-anchor="middle" fill="#fff">올라감 1.5</text><text x="785" y="183" font-size="11.5" text-anchor="middle" fill="#fff">복귀 1.5</text>
+        <text x="500" y="210" font-size="10.5" text-anchor="middle" fill="var(--muted)">받기 0.4</text><text x="695" y="210" font-size="10.5" text-anchor="middle" fill="var(--muted)">싣기 0.5</text>
+      </g>
+      <text x="140" y="248" font-size="12" fill="var(--muted)">1초 = 100px · 계산 예 (가속 3m/s², X·Y 0.8m/s = 로더 X 500rpm 이내, 리프트 1.0m/s)</text>
+    </svg>
+    <div class="c2">
+      <table>
+        <tr><th>구간</th><th>시간</th></tr>
+        <tr><td>갠트리: 상품 위로 1.15 + 내려가 흡착 0.7 + 들기 0.5 + 놓기판으로 1.15 + 내려놓기 0.6 − X·Z 동시 이동 0.9</td><td class="mono">3.2초</td></tr>
+        <tr><td>리프트 2층행: 받기 0.4 + 올라감 1.5 + 싣기 0.5 + 복귀 1.5</td><td class="mono">3.9초</td></tr>
+        <tr><td>리프트 1층행</td><td class="mono">약 2.2초</td></tr>
+        <tr class="tot"><td>시간당 (재시도 · 예외 포함)</td><td class="mono">800~1,000개</td></tr>
+      </table>
+      <table>
+        <tr><th>병목</th><th>해결</th></tr>
+        <tr><td>2층행이 몰리면 리프트</td><td>리프트 1.6m/s(로더 Y 최대), 놓기판 2~3개 대기, 2층 전용 셀</td></tr>
+        <tr><td>3초마다 빈 AGV 필요</td><td>소터 배차 능력을 0단계에서 확인</td></tr>
+        <tr><td>흡착 실패 재시도 (1.5초 손해)</td><td>컵 선택 규칙, 2단계 b에서 AI로 개선</td></tr>
+      </table>
+    </div>
+  </div>
+  <div class="ft"><span>로봇소터 투입 자동화 v2</span><span class="pg"></span></div>
+</section>
+
+<!-- 8-3 AI · 데이터 -->
+<section class="page">
+  <div class="hd"><span class="n">07-3</span><h2>2단계: AI는 어디에, 데이터는 어떻게 제어하나</h2><span class="sub">무거운 데이터는 생긴 곳에서 처리하고, 작은 결과만 넘긴다</span></div>
+  <div class="body c32">
+    <div class="box">
+      <svg viewBox="0 0 640 330" role="img" aria-label="카메라에서 비전 PC로 영상, 비전 PC에서 STM32로 32바이트 쪽지, STM32에서 드라이브와 센서, 소터 관제와 짧은 메시지">
+        <rect x="0" y="10" width="150" height="46" rx="5" fill="var(--soft)"/><text x="75" y="30" font-size="12" text-anchor="middle" font-weight="700">3D 카메라</text><text x="75" y="47" font-size="10.5" text-anchor="middle" fill="var(--muted)">집기마다 약 5MB</text>
+        <rect x="0" y="66" width="150" height="46" rx="5" fill="var(--soft)"/><text x="75" y="86" font-size="12" text-anchor="middle" font-weight="700">스캔 카메라 4~6</text><text x="75" y="103" font-size="10.5" text-anchor="middle" fill="var(--muted)">상품마다 약 25MB</text>
+        <path d="M150 33 H200 M150 89 H200" stroke="#B4632A" stroke-width="6"/><text x="175" y="128" font-size="10.5" text-anchor="middle" fill="#B4632A">초당 약 10MB</text>
+        <rect x="200" y="6" width="220" height="120" rx="6" fill="var(--steel-soft)" stroke="var(--steel)"/>
+        <text x="310" y="28" font-size="13" text-anchor="middle" font-weight="700" fill="var(--steel)">비전 PC (Jetson)</text>
+        <text x="214" y="50" font-size="11">· 집을 자리 (규칙 / AI)</text><text x="214" y="70" font-size="11">· 바코드 읽기</text><text x="214" y="90" font-size="11">· 실패 사진만 압축 저장</text><text x="214" y="112" font-size="10.5" fill="var(--muted)">사진은 여기서 끝</text>
+        <path d="M280 126 V176 M340 176 V126" stroke="var(--dark)" stroke-width="2"/><text x="274" y="156" font-size="10.5" text-anchor="end">집기 · 스캔 결과 32B</text><text x="346" y="156" font-size="10.5">촬영 · 집었음 16B</text>
+        <rect x="200" y="176" width="220" height="104" rx="6" fill="var(--dark)"/>
+        <text x="310" y="198" font-size="13" text-anchor="middle" font-weight="700" fill="#fff">셀 제어 (로더 보드 STM32G473)</text>
+        <text x="214" y="220" font-size="11" fill="#fff">· 순서 · 상품 추적 큐</text><text x="214" y="240" font-size="11" fill="#fff">· 카메라 촬영 펄스 · 안전 확인</text><text x="214" y="260" font-size="11" fill="#fff">· FRAM 블랙박스 (아이디어 1)</text>
+        <rect x="200" y="294" width="220" height="30" rx="4" fill="var(--soft)"/><text x="310" y="314" font-size="11" text-anchor="middle">RS485 A · B (드라이브 6) · I/O</text>
+        <path d="M310 280 V294" stroke="var(--dark)"/>
+        <rect x="470" y="176" width="170" height="104" rx="6" fill="#fff" stroke="var(--dark)"/>
+        <text x="555" y="200" font-size="12.5" text-anchor="middle" font-weight="700">로봇소터 관제</text><text x="484" y="222" font-size="11">· 바코드 → 슈트 · 층</text><text x="484" y="242" font-size="11">· AGV 보내기</text><text x="484" y="262" font-size="11">· "실었음" → 출발</text>
+        <path d="M420 220 H470 M470 250 H420" stroke="var(--dark)" stroke-width="2"/><text x="445" y="212" font-size="10" text-anchor="middle">TCP 64B</text>
+      </svg>
+      <div class="call r"><b>기본값은 "보내지 않는다".</b> 스캔 결과가 0.4초 안에 안 오거나, 센서 순서가 어긋나거나, 비전 PC가 멈추면 예외함 또는 정지. 확인 안 된 상품이 소터에 들어가는 길이 없습니다.</div>
+    </div>
+    <div class="box">
+      <h3>AI가 필요한가</h3>
+      <table>
+        <tr><th>일</th><th>2단계 a (상자)</th><th>2단계 b (비닐 · 겹침)</th></tr>
+        <tr><td>상품 하나씩 나누기</td><td><span class="chip s">규칙</span> 깊이로 맨 위 평평한 면</td><td><span class="chip b">AI 1개</span> 외부 협력</td></tr>
+        <tr><td>집을 자리 · 컵</td><td colspan="2"><span class="chip s">규칙</span> 면 가운데, 면 크기로 컵</td></tr>
+        <tr><td>잡았나 · 하나만</td><td colspan="2"><span class="chip s">규칙</span> 진공 압력, 로드셀</td></tr>
+        <tr><td>바코드 · 층</td><td colspan="2"><span class="chip s">규칙</span> 디코더 + 관제 조회</td></tr>
+      </table>
+      <h3>상품 추적 큐 (STM32)</h3>
+      <table>
+        <tr><th>순간</th><th>큐에 적는 것</th><th>늦으면</th></tr>
+        <tr><td>놓기판에 놓임</td><td>번호 17 · 놓기판</td><td>—</td></tr>
+        <tr><td>터널 입구</td><td>촬영 펄스 · 시각</td><td>—</td></tr>
+        <tr><td>스캔 결과</td><td>바코드 · 2층</td><td><span class="chip b">0.4초 → 예외함</span></td></tr>
+        <tr><td>리프트 · AGV</td><td>리프트 → 삭제</td><td><span class="chip b">정지 · 알림</span></td></tr>
+      </table>
+      <p class="note">시간당 1,000개여도 STM32 · 관제 사이 쪽지는 시간당 수백 KB라 기존 W6100 TCP로 충분합니다. 저장은 실패 사진 + 1% 표본을 압축해 하루 2~4GB, 밤에 서버로.</p>
+    </div>
+  </div>
+  <div class="ft"><span>로봇소터 투입 자동화 v2</span><span class="pg"></span></div>
+</section>
+
+<!-- 8-4 비용 마진 -->
+<section class="page">
+  <div class="hd"><span class="n">07-4</span><h2>2단계: 셀 재료비 · 마진 · 손익분기</h2><span class="sub">모두 추정 · 견적으로 바꿀 값</span></div>
+  <div class="body c2">
+    <div class="box">
+      <h3>셀 1대 재료비 (1단계 장치 포함)</h3>
+      <table>
+        <tr><th>구성</th><th>금액 (만원)</th></tr>
+        <tr><td>로더 계열 드라이브 · 모터 6 (브레이크 2)</td><td class="mono">380~720</td></tr>
+        <tr><td>소형 모터 (BLDC · 모터 롤러 · 플랩)</td><td class="mono">60~150</td></tr>
+        <tr><td>갠트리 기구 (1.6 × 1.0 × 0.6m)</td><td class="mono">500~900</td></tr>
+        <tr><td>흡착 (진공 · 컵 3~4종 · 교체대 · 압력 · 로드셀)</td><td class="mono">150~400</td></tr>
+        <tr><td>3D 카메라 (Gemini 335급)</td><td class="mono">40~50</td></tr>
+        <tr><td>비전 PC (Jetson Orin NX 키트)</td><td class="mono">200~350</td></tr>
+        <tr><td>스캔 카메라 4~6 · 조명</td><td class="mono">200~550</td></tr>
+        <tr><td>놓기판 · 터널 · 리프트 구조</td><td class="mono">300~600</td></tr>
+        <tr><td>제어 보드 (로더 보드 + RS485 1 + I/O)</td><td class="mono">30~80</td></tr>
+        <tr><td>토트 컨베이어 연결 · 예외함</td><td class="mono">200~500</td></tr>
+        <tr><td>안전 (펜스 · 라이트 커튼 · 안전 릴레이)</td><td class="mono">200~500</td></tr>
+        <tr><td>제어반 · 배선 · 공압</td><td class="mono">200~400</td></tr>
+        <tr class="tot"><td>합계</td><td class="mono">약 2,460~5,200</td></tr>
+      </table>
+    </div>
+    <div class="box">
+      <h3>판매가별 마진 (재료비 가운데 3,800만원 기준)</h3>
+      <table>
+        <tr><th>판매가</th><th>설치</th><th>AS 5%</th><th>대당 남음</th><th>이익률</th><th>손익분기</th></tr>
+        <tr><td class="mono">6,000만</td><td class="mono">600</td><td class="mono">300</td><td class="mono">1,300</td><td><span class="chip w">22%</span></td><td class="mono">52대</td></tr>
+        <tr><td class="mono"><b>8,000만</b></td><td class="mono">600</td><td class="mono">400</td><td class="mono">3,200</td><td><span class="chip g">40%</span></td><td class="mono"><b>21대</b></td></tr>
+        <tr><td class="mono">1억</td><td class="mono">600</td><td class="mono">500</td><td class="mono">5,100</td><td><span class="chip g">51%</span></td><td class="mono">13대</td></tr>
+      </table>
+      <p class="note">손익분기 = 개발비 약 6.7억 ÷ 대당 남는 돈. 개발비: 0·1단계 1.6억 + 시제품 0.3억, 2단계 4명 × 12개월 2.8억 + AI 협력 약 1억 + 시제품 2대 약 1억 (1인 연 7천만원 가정).</p>
+      <div class="call g"><b>고객 회수 기간.</b> 24시간 투입 자리 1개 = 약 4.2명. 예외 처리 인원을 빼고 2~3명분(연 약 6,240~9,360만원)을 줄이면 8,000만원 셀은 약 0.9~1.3년에 회수됩니다.</div>
+      <div class="call y"><b>1단계 장치만 팔 때.</b> 재료비 가운데 1,450만원, 판매가 3,000만원이면 매출총이익 약 37%. 1단계 판매로 2단계 개발비 일부를 먼저 법니다.</div>
+    </div>
+  </div>
+  <div class="ft"><span>로봇소터 투입 자동화 v2</span><span class="pg"></span></div>
+</section>
+
+<!-- 9 단계별 요약 -->
+<section class="page">
+  <div class="hd"><span class="n">08</span><h2>단계별 비용 · 인력 · 기간 · 계속 조건</h2><span class="sub">엑셀 6. 개발 기간·인력·비용 / 7. 효과 및 검증</span></div>
+  <div class="body" style="grid-template-rows:auto auto 1fr">
+    <table>
+      <tr><th style="width:15%">단계</th><th>결과물</th><th style="width:15%">재료비 (추정)</th><th style="width:17%">인력</th><th style="width:10%">기간</th><th style="width:22%">계속 조건</th></tr>
+      <tr><td><b>0 · 데이터</b></td><td>투입 시간 분석, 상품·라벨 분포, 로봇 가능 비율 보고서, AI 학습 사진</td><td class="mono">50~300만원</td><td>펌웨어 1(본인) · SW 0.5</td><td>약 3개월</td><td>바코드·층 맞추기 ≥ 투입 시간 30%, 또는 로봇 가능 상품 ≥ 70%</td></tr>
+      <tr><td><b>1 · 투입 보조</b></td><td>놓기판 · 스캔 터널 · 리프트 장치, 고객 1곳 시범</td><td class="mono">대당 860~2,030만원</td><td>기구 1 · 펌웨어 1 · SW 1</td><td>6~9개월</td><td>1인 투입 속도 +30% 이상, 오투입 0, 고객 시범 만족</td></tr>
+      <tr><td><b>2 · 로봇 셀</b></td><td>갠트리 피커 + 1단계 장치, 무인 운전</td><td class="mono">대당 +1,500~3,500만원</td><td>위 + AI 협력사</td><td>12개월~</td><td>잡기 성공 90~95%, 무인 4시간, 투자 회수 2년 이내</td></tr>
+    </table>
+    <div class="c3">
+      <div class="call"><b>0단계에서 멈추면</b><br>투입 작업 분석 자료와 상품 데이터가 남습니다. 지금 소터 현장 개선(투입대 높이, 스캐너 위치)에 바로 씁니다.</div>
+      <div class="call y"><b>1단계에서 멈추면</b><br>사람 1명의 속도를 올리는 장치를 신규 소터 옵션·후장착으로 팝니다. 2단 소터에서 특히 효과가 큽니다.</div>
+      <div class="call g"><b>2단계까지 가면</b><br>자사 로봇소터 + 투입 셀 묶음 판매. 투입점을 우리가 설계하므로 연동 비용이 적습니다.</div>
+    </div>
+    <div class="box">
+      <h3>측정할 효과</h3>
+      <table>
+        <tr><th>지표</th><th>방법</th><th>목표 (제안)</th></tr>
+        <tr><td>1인 시간당 투입 수</td><td>0단계 측정값 대비 1단계 장치 사용 시</td><td>+30% 이상</td></tr>
+        <tr><td>오투입 (잘못된 슈트)</td><td>소터 관제 기록</td><td>0건 (확인된 상품만 투입)</td></tr>
+        <tr><td>예외함 비율</td><td>장치 기록</td><td>5% 이하 (0단계 라벨 조사로 예측)</td></tr>
+        <tr><td>투입 인원 · 회수 기간</td><td>현장 교대 인원으로 재계산</td><td>1단계 2년, 2단계 2년 이내</td></tr>
+      </table>
+    </div>
+  </div>
+  <div class="ft"><span>로봇소터 투입 자동화 v2</span><span class="pg"></span></div>
+</section>
+
+<!-- 10 위험 -->
+<section class="page">
+  <div class="hd"><span class="n">09</span><h2>현실성과 위험</h2><span class="sub">확인할 것을 숨기지 않는다</span></div>
+  <div class="body c2">
+    <div class="box">
+      <h3>이미 증명된 것과 확인할 것</h3>
+      <table>
+        <tr><th>항목</th><th>근거</th><th>확인할 것</th><th>가능성</th></tr>
+        <tr><td>사람 + 투입 보조 장치</td><td>Tompkins Induction Lift 상용</td><td>우리 소터 AGV 넘김 방식</td><td><span class="chip g">높음</span></td></tr>
+        <tr><td>다면 바코드 스캔</td><td>Cognex · Keyence 스캔 터널 상용</td><td>작은 상품 · 비닐 반사</td><td><span class="chip g">높음</span></td></tr>
+        <tr><td>갠트리 피킹</td><td>Cartman(2017 아마존 대회 우승), GRIPP</td><td>우리 기구 속도</td><td><span class="chip g">높음</span></td></tr>
+        <tr><td>섞인 토트 피킹</td><td>Berkshire Grey · OSARO 상용</td><td>우리 상품 구성 (0단계)</td><td><span class="chip s">중간</span></td></tr>
+        <tr><td>비닐 · 병</td><td>비닐 전용 벨로즈 컵 판매</td><td>현장 포장 상태</td><td><span class="chip s">중간</span></td></tr>
+        <tr><td>특허</td><td>갠트리가 소터에 올리는 특허 US12338082</td><td>침해 여부</td><td><span class="chip b">착수 전 확인</span></td></tr>
+      </table>
+    </div>
+    <div class="box">
+      <h3>위험과 대응</h3>
+      <table>
+        <tr><th>위험</th><th>대응</th></tr>
+        <tr><td>1단계 속도 향상이 작음</td><td>0단계에서 "바코드·층 맞추기 시간 비율"을 먼저 재고, 30% 미만이면 1단계를 하지 않음</td></tr>
+        <tr><td>예외함이 많음</td><td>라벨 위치 조사로 카메라 수 결정, 그래도 많으면 해당 상품군 제외</td></tr>
+        <tr><td>회사에 AI 인력 없음</td><td>2단계 AI는 외부 협력. 0·1단계는 AI 없음</td></tr>
+        <tr><td>현장 촬영 거부감</td><td>위에서 손·상품만, 목적 안내, 사내·고객 협의 후 설치</td></tr>
+        <tr><td>안전 인증</td><td>1단계는 저속 리프트 + 덮개, 2단계는 펜스·라이트 커튼·안전 릴레이, 위험성 평가</td></tr>
+        <tr><td>토트 공급</td><td>현장 컨베이어 연결이 기본. AMR은 직접 만들지 않고 기성품</td></tr>
+      </table>
+    </div>
+  </div>
+  <div class="ft"><span>로봇소터 투입 자동화 v2</span><span class="pg"></span></div>
+</section>
+
+<!-- 11 엑셀 -->
+<section class="page">
+  <div class="hd"><span class="n">10</span><h2>엑셀 「아이디어 제안 (2)」 항목별 내용</h2><span class="sub">옮겨 적을 문장</span></div>
+  <div class="body">
+    <table style="font-size:10.8px">
+      <tr><th style="width:15%">항목</th><th>내용</th></tr>
+      <tr><td>아이디어명</td><td>로봇소터 투입 자동화 3단계 (0 데이터 수집 → 1 투입 보조 장치 → 2 로봇 피킹 셀)</td></tr>
+      <tr><td>1. 배경·현장 문제</td><td>소터 앞 투입은 사람이 집기·바코드 찾기·스캔·층 맞추기를 반복해, 24시간 운영 시 한 자리 약 4.2명, 최저임금 기준 연 1.3억원 이상. 야간 인력 구하기 어렵고 2단 소터는 층 맞추기 부담이 큼.</td></tr>
+      <tr><td>2. 제품·서비스</td><td>0단계: 투입 자리 카메라로 작업 시간·상품·라벨 데이터 수집. 1단계: 사람은 놓기만 하면 스캔 터널이 읽고 리프트가 맞는 층 AGV에 넘기는 투입 보조 장치. 2단계: 그 앞에 갠트리 피커를 붙인 무인 투입 셀.</td></tr>
+      <tr><td>3. 기능·구현</td><td>제어는 3D 로더 보드(STM32G473, RS485 Modbus 드라이브, W6100 TCP, FRAM) 재사용. 1단계는 AI 없이 바코드 1개 · 작업 목록 · 무게 규칙으로 "확인된 상품만 투입". 2단계 AI(상품 분할 1개)는 외부 협력. 모터 드라이브는 3D 로더와 같은 것(X형 3 · Y형 2 · TILT형 1)으로 펌웨어 · 예비품 공유, 버스 2개. 영상은 비전 PC 안에서만 처리하고 STM32에는 32B 결과만 전달.</td></tr>
+      <tr><td>4. 경쟁·차별성</td><td>해외 로봇 투입 시스템은 수억 원대이고 남의 소터에 맞춤. 본 제안은 자사 소터 투입점을 함께 설계하고, 사람 보조 장치부터 팔아 위험을 줄임. 2단 소터 층 투입이 강점.</td></tr>
+      <tr><td>5. 고객·판매</td><td>1단계: 신규 로봇소터 옵션 · 기존 고객 후장착. 2단계: 24시간 · 야간 운영 현장에 소터 + 투입 셀 묶음.</td></tr>
+      <tr><td>6. 기간·인력·비용</td><td>0단계 약 3개월 · 50~300만원 · 펌웨어 1(본인) + SW 0.5. 1단계 6~9개월 · 대당 860~2,030만원 · 기구 1, 펌웨어 1, SW 1. 2단계는 0·1단계 결과로 확정(셀 재료비 2,460~5,200만원, 판매 8,000만원 기준 매출총이익 약 40%, 손익분기 약 21대, 모두 추정). 전체 약 2~2.5년.</td></tr>
+      <tr><td>7. 효과·검증</td><td>단계별 계속 조건: ① 바코드·층 맞추기 시간 ≥ 30% 또는 로봇 가능 상품 ≥ 70% ② 1인 투입 속도 +30%, 오투입 0, 고객 시범 만족. 측정: 투입 수/시, 오투입, 예외함 비율, 회수 기간.</td></tr>
+      <tr><td>8. 출처</td><td>최저임금 고시, Berkshire Grey · OSARO · Plus One · Tompkins 자료, Cartman 논문, Cognex · Keyence 스캔 터널, 특허 US12338082 (다음 쪽)</td></tr>
+      <tr><td>9. 예상 질문</td><td>"AI 인력이 없는데?" → 0·1단계는 AI 없음, 2단계는 외부 협력. "토트는 누가 넣나?" → 현장 컨베이어 연결, AMR은 만들지 않음. "못 읽으면?" → 추측하지 않고 예외함. "효과가 없으면?" → 0단계에서 숫자로 먼저 확인하고 멈춤.</td></tr>
+    </table>
+  </div>
+  <div class="ft"><span>로봇소터 투입 자동화 v2</span><span class="pg"></span></div>
+</section>
+
+<!-- 12 출처 -->
+<section class="page">
+  <div class="hd"><span class="n">11</span><h2>출처</h2><span class="sub">확인일 2026-10-26</span></div>
+  <div class="body">
+    <table>
+      <tr><th style="width:12%">구분</th><th>자료</th><th>주소</th></tr>
+      <tr><td>시장</td><td>2026 최저임금 시급 10,320원 (고용노동부 고시 정리)</td><td class="mono">yellowit.co.kr</td></tr>
+      <tr><td>경쟁사</td><td>Berkshire Grey 로봇 투입 스테이션 · 투입·분류 데이터시트</td><td class="mono">therobotreport.com · berkshiregrey.com</td></tr>
+      <tr><td>경쟁사</td><td>OSARO 로봇 투입 데이터시트 (시간당 1,500개 이상, 제조사 주장)</td><td class="mono">marketing.osaro.com</td></tr>
+      <tr><td>경쟁사</td><td>Plus One Robotics InductOne</td><td class="mono">robotics247.com · plusonerobotics.com</td></tr>
+      <tr><td>경쟁사</td><td>Tompkins Robotics Induction Lift · tSort</td><td class="mono">promatshow.com · consumergoods.com</td></tr>
+      <tr><td>국내</td><td>롯데글로벌로지스 자동화 센터 (오토스토어 + 로봇 소터)</td><td class="mono">fnnews.com</td></tr>
+      <tr><td>기술</td><td>Cartman: 저가 직교 로봇, 2017 Amazon Robotics Challenge 우승</td><td class="mono">arxiv.org/pdf/1709.06283</td></tr>
+      <tr><td>기술</td><td>갠트리 피스 피커 GRIPP (시간당 최대 1,200개, 제조사 주장)</td><td class="mono">racklify.com</td></tr>
+      <tr><td>기술</td><td>Cognex 투입용 스캔 터널 · Keyence 물류 스캔 터널</td><td class="mono">cognex.com · keyence.com</td></tr>
+      <tr><td>기술</td><td>갠트리 로봇이 소터에 상품을 올리는 특허 US12338082</td><td class="mono">uspto.gov</td></tr>
+      <tr><td>가격</td><td>NVIDIA Jetson 가격 인상 (2026-07) · Orbbec Gemini 335 판매가</td><td class="mono">cnx-software.com · robotshop.com</td></tr>
+      <tr><td>가격</td><td>토트 AMR 가격대</td><td class="mono">grabarobot.com</td></tr>
+      <tr><td>사내</td><td>코텍전자 로봇소터 운영영상, threeD_roder 펌웨어 (i_motor.h · a_motor.h · t_motor.h 값)</td><td class="mono">youtube.com/watch?v=OrM7wuNWiNs</td></tr>
+      <tr><td>시연</td><td>투입 흐름 3D · 갠트리 셀 설계표</td><td class="mono">claude.ai/artifact/PFB23J3fvYfSik1jXWat3s · UDviMinezfT5iUEA1ShAat</td></tr>
+    </table>
+    <p class="note">"추정"으로 표시한 금액과 기간은 일반 시장 가격과 개발 경험에 기반한 대략값이며 실제 견적으로 바꿔야 합니다. 그림은 개념도이고 실제 소터 치수와 다를 수 있습니다. 계속 조건 숫자는 제안값이며 0단계 결과로 조정합니다.</p>
+  </div>
+  <div class="ft"><span>로봇소터 투입 자동화 v2</span><span class="pg"></span></div>
+</section>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script>
+(function(){
+  if (typeof qrcode==='undefined') return;
+  function png(t){ var q=qrcode(0,'M'); q.addData(t); q.make(); var n=q.getModuleCount(), cell=8, m=3, s=(n+2*m)*cell, c=document.createElement('canvas'); c.width=c.height=s; var x=c.getContext('2d'); x.fillStyle='#fff'; x.fillRect(0,0,s,s); x.fillStyle='#000'; for (var r=0;r<n;r++) for (var k=0;k<n;k++) if (q.isDark(r,k)) x.fillRect((k+m)*cell,(r+m)*cell,cell,cell); return c.toDataURL('image/png'); }
+  document.getElementById('q1').src=png('https://claude.ai/artifact/PFB23J3fvYfSik1jXWat3s');
+  document.getElementById('q2').src=png('https://claude.ai/artifact/UDviMinezfT5iUEA1ShAat');
+})();
+</script>
+</body></html>

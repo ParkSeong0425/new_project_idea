@@ -1,0 +1,552 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<title>3D 로더 고장 예방 보고서 v2</title>
+<style>
+@page{size:A4 landscape;margin:0}
+:root{--ink:#17202A;--muted:#5B6672;--line:#D5DCE2;--soft:#F2F4F6;--accent:#D99A00;--accent-soft:#FFF3D1;--accent-ink:#5A3F00;
+  --steel:#2C5D86;--steel-soft:#E3EDF5;--good:#2F7D4F;--good-soft:#E1F1E6;--warn:#B9661C;--warn-soft:#F8EBDD;--bad:#B23A3A;--bad-soft:#F6E1E1;--dark:#17212B;--pcb:#2F6A4E;--pcb-soft:#DCEBE2}
+*{box-sizing:border-box}
+html,body{margin:0;background:#fff;color:var(--ink);font-family:"Malgun Gothic","맑은 고딕","Apple SD Gothic Neo",sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+@media screen{body{background:#dde2e6;padding:16px 0}.page{margin:0 auto 16px;box-shadow:0 2px 10px rgba(0,0,0,.15);background:#fff}}
+.page{width:297mm;height:210mm;padding:11mm 13mm 9mm;display:flex;flex-direction:column;gap:4.5mm;page-break-after:always;overflow:hidden;position:relative}
+.page:last-child{page-break-after:auto}
+.hd{display:flex;align-items:baseline;gap:10px;border-bottom:2.5px solid var(--dark);padding-bottom:2.5mm}
+.hd .n{font-size:11px;font-weight:700;background:var(--accent-soft);color:var(--accent-ink);padding:1px 7px;border-radius:3px}
+.hd h2{margin:0;font-size:22px}
+.hd .sub{margin-left:auto;font-size:11.5px;color:var(--muted)}
+.ft{position:absolute;left:13mm;right:13mm;bottom:5mm;display:flex;justify-content:space-between;font-size:9.5px;color:var(--muted)}
+.body{flex:1;min-height:0;display:grid;gap:4mm;align-content:start}
+.c2{display:grid;grid-template-columns:1fr 1fr;gap:5mm}
+.c32{display:grid;grid-template-columns:1.35fr 1fr;gap:5mm}
+.c3{display:grid;grid-template-columns:repeat(3,1fr);gap:4mm}
+.box{border:1px solid var(--line);border-radius:5px;padding:3.5mm 4mm;display:flex;flex-direction:column;gap:2.5mm;min-width:0}
+h3{margin:0;font-size:14px}
+p{margin:0;font-size:12px;line-height:1.6}
+table{border-collapse:collapse;width:100%;font-size:11px;line-height:1.45}
+th,td{text-align:left;padding:4.5px 7px;border-bottom:1px solid var(--line);vertical-align:top}
+th{background:var(--soft);font-size:10.5px;color:var(--muted);font-weight:700}
+.tot td{font-weight:700;background:var(--soft)}
+.mono{font-family:Consolas,"Malgun Gothic",monospace}
+.chip{display:inline-block;font-size:10px;font-weight:700;padding:0 6px;border-radius:3px;white-space:nowrap}
+.g{background:var(--good-soft);color:var(--good)} .w{background:var(--warn-soft);color:var(--warn)} .b{background:var(--bad-soft);color:var(--bad)} .s{background:var(--steel-soft);color:var(--steel)}
+.call{background:var(--steel-soft);border-radius:5px;padding:3mm 4mm;font-size:12px;line-height:1.6}
+.call.y{background:var(--accent-soft)} .call.r{background:var(--bad-soft)} .call.g{background:var(--good-soft)}
+.call b{color:var(--steel)} .call.y b{color:var(--accent-ink)} .call.r b{color:var(--bad)} .call.g b{color:var(--good)}
+.note{font-size:10.5px;color:var(--muted);border-left:3px solid var(--line);padding-left:8px;line-height:1.5}
+ul{margin:0;padding-left:1.1em;font-size:11.5px;line-height:1.6}
+svg{display:block;width:100%;height:auto}
+svg text{font-family:"Malgun Gothic",sans-serif;fill:var(--ink)}
+.kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:4mm}
+.kpi div{background:var(--dark);color:#fff;border-radius:5px;padding:4mm 5mm}
+.kpi b{display:block;font-size:22px;color:var(--accent)}
+.kpi span{font-size:11px}
+.formula{font-family:Consolas,monospace;font-size:11px;background:var(--soft);border-radius:4px;padding:2.5mm 3mm;white-space:pre;line-height:1.5}
+.qr{display:grid;grid-template-columns:30mm 1fr;gap:4mm;align-items:center}
+.qr .code{width:30mm;height:30mm}
+.qr .code img{width:100%;height:100%;image-rendering:pixelated;display:block}
+</style></head><body>
+
+<!-- 1 표지 -->
+<section class="page">
+  <p style="font-size:11.5px;color:var(--muted)">아이디어 제안 1 · 사내 제품 발전 · HW팀 펌웨어 · 박성원 · 2026-10-26 · 보고서 v2</p>
+  <h1 style="margin:0;font-size:34px;line-height:1.25">3D 로더 고장 예방: 펌웨어 블랙박스와 캐리지 노드</h1>
+  <p style="font-size:14.5px;max-width:255mm">고장이 나도 그 순간의 값이 남지 않아, 코드 문제인지 조립 문제인지 현장에서 재현해 봐야 알 수 있었습니다. <b>1단계는 지금 보드의 펌웨어만 바꿔(부품 0원)</b> 이동마다 기록하고 평소와 비교합니다. <b>2단계는 로봇에 작은 보드(캐리지 노드)</b>를 붙여 바퀴 풀림 · 흔들림까지 미리 알립니다. 카메라와 AI는 쓰지 않습니다.</p>
+  <svg viewBox="0 0 1000 250" role="img" aria-label="두 단계 그림">
+    <rect x="20" y="40" width="460" height="190" rx="8" fill="var(--steel-soft)" stroke="var(--steel)"/>
+    <text x="44" y="76" font-size="18" font-weight="700" fill="var(--steel)">1단계 · 펌웨어 블랙박스</text>
+    <text x="44" y="106" font-size="14">이미 읽는 값으로 이동마다 기록 · 평소 대비 비교</text>
+    <text x="44" y="132" font-size="14">메인 보드 건강 체크 (3.3V · 온도 · 리셋 · 통신 오류)</text>
+    <text x="44" y="158" font-size="14">알람 순간 블랙박스 → 사무실에서 원인 판정</text>
+    <text x="44" y="206" font-size="13" fill="var(--muted)">부품 0원 · 약 3~4개월 · 2027 "기존 제품 펌웨어 개선" 업무 안에서</text>
+    <path d="M490 135 h30" stroke="var(--dark)" stroke-width="3"/><path d="M520 125 l14 10 l-14 10z" fill="var(--dark)"/>
+    <rect x="540" y="40" width="440" height="190" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/>
+    <text x="564" y="76" font-size="18" font-weight="700" fill="var(--accent-ink)">2단계 · 캐리지 노드</text>
+    <text x="564" y="106" font-size="14">IMU로 충격 · 흔들림 · 기울기 측정</text>
+    <text x="564" y="132" font-size="14">기존 RS485에 ID5로 연결 · 케이블 베어 선 추가 0</text>
+    <text x="564" y="158" font-size="14">1단계 시험 결과가 "필요하다"고 할 때만</text>
+    <text x="564" y="206" font-size="13" fill="var(--muted)">대당 부품 3~6만원 · 약 6~8개월 (회로 검토 도움)</text>
+  </svg>
+  <div class="kpi">
+    <div><b>0원</b><span>1단계 부품비 · 지금 보드 펌웨어만</span></div>
+    <div><b>0가닥</b><span>케이블 베어에 추가하는 선</span></div>
+    <div><b>카메라 0 · AI 0</b><span>평소 값과 비교하는 규칙으로 판단</span></div>
+    <div><b>약 1년</b><span>1·2단계 전체 (1단계만 3~4개월)</span></div>
+  </div>
+  <div class="ft"><span>3D 로더 고장 예방 v2</span><span>1</span></div>
+</section>
+
+<!-- 2 현장 문제 -->
+<section class="page">
+  <div class="hd"><span class="n">01</span><h2>현장 문제: 고장은 나는데 원인을 모른다</h2><span class="sub">엑셀 1. 제안 배경 및 현장 문제</span></div>
+  <div class="body c2">
+    <div class="box">
+      <h3>현장에서 겪는 고장</h3>
+      <table>
+        <tr><th>고장</th><th>주된 원인</th><th>지금 알게 되는 때</th></tr>
+        <tr><td>X 벨트 올라탐</td><td>풀리 정렬 불량, 장력 부족</td><td>올라탄 뒤</td></tr>
+        <tr><td>바퀴 빠짐</td><td>왕복 가감속으로 롤러 축 볼트 · 편심부 풀림</td><td>빠진 뒤</td></tr>
+        <tr><td>벨트 끊어짐</td><td>옆면 마찰로 한쪽 심선에 하중 집중</td><td>끊어진 뒤</td></tr>
+        <tr><td>물건 끼임</td><td>상품 · 토트 위치. 계속 밀면 2차 손상</td><td>알람(A_05) 후</td></tr>
+        <tr><td>X 하부 케이블 베어 올라탐</td><td>베어가 가이드 채널을 벗어나 레일 위로</td><td>멈춘 뒤</td></tr>
+      </table>
+      <h3>지금의 흐름</h3>
+      <svg viewBox="0 0 560 70"><g font-size="12.5" text-anchor="middle">
+        <rect x="0" y="12" width="120" height="44" rx="5" fill="var(--bad-soft)"/><text x="60" y="39" fill="var(--bad)">고장 · 알람</text>
+        <rect x="146" y="12" width="120" height="44" rx="5" fill="var(--soft)"/><text x="206" y="39">현장 출동</text>
+        <rect x="292" y="12" width="120" height="44" rx="5" fill="var(--soft)"/><text x="352" y="39">재현 시도</text>
+        <rect x="438" y="12" width="120" height="44" rx="5" fill="var(--soft)"/><text x="498" y="39">원인 추정</text>
+        <path d="M120 34h26M266 34h26M412 34h26" stroke="var(--muted)" stroke-width="2"/></g></svg>
+    </div>
+    <div class="box">
+      <h3>실제 작업 기록 (threeD_roder)</h3>
+      <table>
+        <tr><th>증상</th><th>실제 원인</th><th>분류</th></tr>
+        <tr><td>Y가 제시간에 못 감 (A06)</td><td>FRAM 가감속 설정이 1500으로 바뀌어 있었음</td><td><span class="chip s">설정</span></td></tr>
+        <tr><td>이동 중 X 무응답 (ALARM 02)</td><td>RS485 프레임 사이 쉬는 시간이 0</td><td><span class="chip w">코드</span></td></tr>
+        <tr><td>Y 높이 틀어짐</td><td>에이징 중 드라이브 값(H05_09)이 바뀜</td><td><span class="chip s">드라이브 설정</span></td></tr>
+      </table>
+      <div class="call r"><b>셋 다 기록이 있었다면 사무실에서 판정할 수 있었습니다.</b> 고장 순간의 명령 · 설정 · 결과가 남지 않아서, 현장에 가서 재현해 봐야 알았습니다.</div>
+      <div class="call y"><b>그래서 이 제안은</b> ① 지금 보드가 이미 읽는 값을 버리지 않고 기록하고, ② 평소와 비교해 나빠지는 추세를 먼저 알리고, ③ 메인 보드 자신의 건강도 같이 봅니다.</div>
+    </div>
+  </div>
+  <div class="ft"><span>3D 로더 고장 예방 v2</span><span>2</span></div>
+</section>
+
+<!-- 3 전체 구성 -->
+<section class="page">
+  <div class="hd"><span class="n">02</span><h2>전체 구성: 선은 늘리지 않고, 기록과 판단을 더한다</h2><span class="sub">엑셀 2. 제안 제품 · 3. 주요 기능</span></div>
+  <div class="body">
+    <svg viewBox="0 0 1000 330" role="img" aria-label="메인 보드, RS485 버스의 드라이브 4개와 노드, FRAM, W6100 TCP, 현장 PC, 알림, 휴대폰">
+      <rect x="20" y="20" width="260" height="190" rx="6" fill="var(--pcb-soft)" stroke="var(--pcb)" stroke-width="1.5"/>
+      <text x="150" y="44" font-size="14" text-anchor="middle" font-weight="700">메인 보드 (제어반)</text>
+      <text x="150" y="62" font-size="11.5" text-anchor="middle" fill="var(--muted)">STM32G473 · FreeRTOS · threeD_roder</text>
+      <rect x="36" y="76" width="228" height="34" rx="4" fill="#fff" stroke="var(--line)"/><text x="150" y="98" font-size="12" text-anchor="middle">① 이동 요약 기록 (32바이트/회)</text>
+      <rect x="36" y="116" width="228" height="34" rx="4" fill="#fff" stroke="var(--line)"/><text x="150" y="138" font-size="12" text-anchor="middle">② 평소(7일 중앙값) 대비 판단</text>
+      <rect x="36" y="156" width="228" height="34" rx="4" fill="#fff" stroke="var(--line)"/><text x="150" y="178" font-size="12" text-anchor="middle">③ 보드 건강 · 알람 블랙박스</text>
+      <rect x="40" y="240" width="100" height="40" rx="4" fill="var(--soft)"/><text x="90" y="265" font-size="12" text-anchor="middle">FRAM 8KB</text>
+      <path d="M90 210 V240" stroke="var(--dark)"/>
+      <!-- 버스 -->
+      <path d="M280 110 H960" stroke="var(--steel)" stroke-width="3"/><path d="M280 122 H960" stroke="var(--accent)" stroke-width="3"/>
+      <text x="300" y="102" font-size="11" fill="var(--steel)">RS485 A · B (기존 선, 115200bps, Modbus RTU) — 케이블 베어를 지나 로봇까지</text>
+      <g font-size="12" text-anchor="middle">
+        <path d="M430 122 V160" stroke="var(--dark)"/><rect x="380" y="160" width="100" height="44" rx="4" fill="var(--steel-soft)" stroke="var(--steel)"/><text x="430" y="187">X하 ID4</text>
+        <path d="M540 122 V160" stroke="var(--dark)"/><rect x="490" y="160" width="100" height="44" rx="4" fill="var(--steel-soft)" stroke="var(--steel)"/><text x="540" y="187">X상 ID3</text>
+        <path d="M650 122 V160" stroke="var(--dark)"/><rect x="600" y="160" width="100" height="44" rx="4" fill="var(--steel-soft)" stroke="var(--steel)"/><text x="650" y="187">Y ID1</text>
+        <path d="M760 122 V160" stroke="var(--dark)"/><rect x="710" y="160" width="100" height="44" rx="4" fill="var(--steel-soft)" stroke="var(--steel)"/><text x="760" y="187">TILT ID2</text>
+        <path d="M880 122 V160" stroke="var(--accent)" stroke-dasharray="4 3"/><rect x="830" y="160" width="110" height="44" rx="4" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="885" y="182" font-weight="700" fill="var(--accent-ink)">노드 ID5</text><text x="885" y="198" font-size="10.5" fill="var(--muted)">2단계</text>
+      </g>
+      <text x="660" y="226" font-size="11" text-anchor="middle" fill="var(--muted)">로봇 위 (드라이브 4개가 로봇에 타고 다님)</text>
+      <!-- 알림 -->
+      <path d="M150 210 V300 H300" stroke="var(--dark)"/><text x="160" y="296" font-size="10.5" fill="var(--muted)">TCP (W6100, 기존)</text>
+      <g font-size="12" text-anchor="middle">
+        <rect x="300" y="276" width="150" height="44" rx="4" fill="#fff" stroke="var(--dark)"/><text x="375" y="303">현장 PC (기존)</text>
+        <path d="M450 298 H500" stroke="var(--dark)"/>
+        <rect x="500" y="276" width="170" height="44" rx="4" fill="var(--steel-soft)" stroke="var(--steel)"/><text x="585" y="296">알림</text><text x="585" y="312" font-size="10.5" fill="var(--muted)">웹훅 → 봇 → 앱</text>
+        <path d="M670 298 H720" stroke="var(--dark)"/>
+        <rect x="720" y="276" width="140" height="44" rx="10" fill="var(--dark)"/><text x="790" y="303" fill="#fff">개발자 휴대폰</text>
+      </g>
+    </svg>
+    <div class="c3">
+      <div class="box"><h3>1단계 (부품 0원)</h3><ul><li>X 두 모터 위치 차이 · 도착 시간 · 반복 횟수 기억</li><li>이동마다 32바이트 요약 → FRAM 링버퍼</li><li>평소 대비 % 로 주의 / 경고</li><li>보드 3.3V · 온도 · 리셋 원인 · 통신 오류율</li></ul></div>
+      <div class="box"><h3>2단계 (대당 3~6만원)</h3><ul><li>로봇 하부에 30×40mm 보드, IMU 1개</li><li>기존 RS485에 ID5로 T 분기 연결</li><li>도착 뒤 한 번만 읽기 (약 5ms)</li><li>1단계 시험이 "필요"라고 할 때만 만듦</li></ul></div>
+      <div class="box"><h3>알림</h3><ul><li>보드는 인터넷에 직접 안 붙음</li><li>기존 PC 연결로 진단 메시지(DG_)만 추가</li><li>주의 = 하루 1번 요약, 경고 · 정지 = 즉시</li><li>3D 시뮬레이터로 흐름 시연 (11쪽 QR)</li></ul></div>
+    </div>
+  </div>
+  <div class="ft"><span>3D 로더 고장 예방 v2</span><span>3</span></div>
+</section>
+
+<!-- 4 1단계 -->
+<section class="page">
+  <div class="hd"><span class="n">03</span><h2>1단계: 지금 보드가 이미 읽는 값을 기록한다</h2><span class="sub">부품 0원 · 새로 묻지 않음</span></div>
+  <div class="body c2">
+    <div class="box">
+      <h3>이미 있는 데이터</h3>
+      <table>
+        <tr><th>데이터</th><th>읽는 곳 (코드)</th><th>알 수 있는 것</th></tr>
+        <tr><td>X 두 모터 위치 차이</td><td class="mono">IM_Arrive → IM_Pos (ID3 · ID4)</td><td>한쪽이 늦으면 그쪽 바퀴 · 벨트 저항</td></tr>
+        <tr><td>도착 시간</td><td class="mono">IM_Arrive · AM_Arrive 시작~도착</td><td>같은 거리인데 점점 늦으면 마찰</td></tr>
+        <tr><td>도착 판정 반복 횟수</td><td>같은 반복문</td><td>목표 근처 흔들림 → 체결 · 장력</td></tr>
+        <tr><td>원점 소요 시간</td><td class="mono">IM_Home</td><td>원점까지 오래 걸리면 저항 증가</td></tr>
+        <tr><td>드라이브 알람</td><td class="mono">IM_Alarm 0x2203 · TM_Alarm</td><td>과전류 · 축잠금 실패 이력</td></tr>
+        <tr><td>통신 오류</td><td class="mono">uart2_err · A_11</td><td>이동 중만 → 타이밍, 대기 중도 → 배선</td></tr>
+      </table>
+      <div class="formula">IM_Arrive 한 바퀴 ≈ 29ms
+ = IM_Pos (ID3 읽기 4.5ms + ID4 읽기 4.5ms = 9ms)
+ + osDelay(ARRIVE_MS = 20ms) 쉼   → 이동 중 버스 약 31%</div>
+    </div>
+    <div class="box">
+      <h3>이동 한 번 = 32바이트 요약</h3>
+      <p>시각 · 명령(MI/MO/PO) · 목표 X·Y · 속도 · 가감속 설정 · 도착 시간 · 두 모터 최대 차이 · 반복 횟수 · 알람 비트 · uart2_err 증가분 · (2단계) 노드 요약 · 펌웨어 버전 · 설정 체크섬</p>
+      <h3>FRAM 8KB 배치</h3>
+      <svg viewBox="0 0 560 70"><g font-size="11" text-anchor="middle">
+        <rect x="0" y="10" width="70" height="36" fill="var(--soft)" stroke="var(--line)"/><text x="35" y="33">save 1KB</text>
+        <rect x="70" y="10" width="20" height="36" fill="var(--accent-soft)" stroke="var(--line)"/><text x="80" y="62" font-size="9.5">머리</text>
+        <rect x="90" y="10" width="105" height="36" fill="var(--steel-soft)" stroke="var(--line)"/><text x="142" y="33">일일 요약 32일</text>
+        <rect x="195" y="10" width="280" height="36" fill="var(--pcb-soft)" stroke="var(--line)"/><text x="335" y="33">최근 이동 128건 (블랙박스) 4KB</text>
+        <rect x="475" y="10" width="85" height="36" fill="var(--bad-soft)" stroke="var(--line)"/><text x="517" y="33">알람 순간 8건</text></g></svg>
+      <h3>코드 문제인지 조립 문제인지</h3>
+      <table>
+        <tr><th>이렇게 나오면</th><th>원인 쪽</th></tr>
+        <tr><td>버전 · 설정 체크섬이 바뀐 직후부터, 여러 대에서 같이</td><td><span class="chip w">코드 · 설정</span></td></tr>
+        <tr><td>한 대만, 점점 심해짐, 특정 X 위치, 한쪽 모터만 늦음</td><td><span class="chip s">조립 · 기계</span></td></tr>
+        <tr><td>통신 오류가 이동 중 버스를 같이 쓸 때만</td><td><span class="chip w">코드 (타이밍)</span></td></tr>
+        <tr><td>통신 오류가 대기 중에도</td><td><span class="chip b">배선 · 전기</span></td></tr>
+      </table>
+    </div>
+  </div>
+  <div class="ft"><span>3D 로더 고장 예방 v2</span><span>4</span></div>
+</section>
+
+<!-- 5 보드 건강 -->
+<section class="page">
+  <div class="hd"><span class="n">04</span><h2>1단계: 메인 보드 자신의 고장도 미리 본다</h2><span class="sub">서서히 나빠지는 고장은 0원으로 잡힌다</span></div>
+  <div class="body c32">
+    <div class="box">
+      <table>
+        <tr><th>볼 값</th><th>어디서 재나</th><th>비용</th><th>나빠지는 신호</th></tr>
+        <tr><td>3.3V 전압</td><td>MCU 안 기준전압 VREFINT를 ADC로 읽어 역계산</td><td><span class="chip g">0원</span></td><td>레귤레이터 노화 · 전원 불안</td></tr>
+        <tr><td>MCU 온도</td><td>MCU 안 온도 센서</td><td><span class="chip g">0원</span></td><td>제어반 팬 고장 · 냉각 불량</td></tr>
+        <tr><td>리셋 원인 횟수</td><td>RCC CSR 플래그(저전압 · 워치독 · 핀) → FRAM 누적</td><td><span class="chip g">0원</span></td><td>순간 정전 · 펌웨어 멈춤</td></tr>
+        <tr><td>RS485 오류율</td><td>uart2_err, 무응답 횟수</td><td><span class="chip g">0원</span></td><td>배선 · 트랜시버 · 커넥터</td></tr>
+        <tr><td>CAN 오류 카운터</td><td>FDCAN 송신 · 수신 오류, bus-off</td><td><span class="chip g">0원</span></td><td>RFID 쪽 CAN 선 · 종단</td></tr>
+        <tr><td>HMI · TCP 끊김</td><td>HMI 무응답, W6100 재접속 횟수</td><td><span class="chip g">0원</span></td><td>UART4 선, 랜선 · 스위치</td></tr>
+        <tr><td>FRAM 쓰기 확인</td><td>쓴 뒤 다시 읽어 비교</td><td><span class="chip g">0원</span></td><td>SPI1 배선 · FRAM 칩</td></tr>
+        <tr><td>24V 입력 · 출렁임</td><td>저항 2개로 나눠 ADC (다음 PCB 판)</td><td><span class="chip s">저항 2개</span></td><td>SMPS 노화, 가속 때 전압 꺼짐</td></tr>
+        <tr><td>드라이브 알람 이력</td><td>IM_Alarm · TM_Alarm (이미 읽음)</td><td><span class="chip g">0원</span></td><td>드라이브 전원부 · 모터 케이블</td></tr>
+      </table>
+    </div>
+    <div class="box">
+      <h3>알림 예</h3>
+      <div class="call y"><b>경고 · 2호기 메인 보드</b><br>3주 동안 3.3V가 3.30 → 3.18V로 내려감, 저전압 리셋 2회 → 다음 방문 때 전원부 점검 · 보드 교체 준비</div>
+      <h3>못 잡는 것</h3>
+      <p>서지 · 정전기로 칩이 한순간에 타는 고장은 예고가 없어서 못 잡습니다. 대신 리셋 원인과 블랙박스가 남아 "무엇이 마지막이었는지"는 알 수 있습니다.</p>
+      <p class="note">기준값은 2주 기록 뒤 현장마다 정합니다. 리셋 원인을 세려면 워치독을 켜야 합니다.</p>
+    </div>
+  </div>
+  <div class="ft"><span>3D 로더 고장 예방 v2</span><span>5</span></div>
+</section>
+
+<!-- 6 시험 -->
+<section class="page">
+  <div class="hd"><span class="n">05</span><h2>1단계 시험: 펌웨어만으로 잡히는지 확인하는 법</h2><span class="sub">사무실 시험 장비에서</span></div>
+  <div class="body c2">
+    <div class="box">
+      <table>
+        <tr><th style="width:18%">순서</th><th>방법</th></tr>
+        <tr><td>① 기록 줄</td><td>IM_Arrive · AM_Arrive 반복문에서 시작 · 끝 시각, 두 모터 최대 차이, 반복 횟수를 기억해 이동마다 CLI로 한 줄 출력. 예: <span class="mono">MV,3000,1482ms,2.1mm,51,err0</span></td></tr>
+        <tr><td>② 평소 값</td><td>같은 MI를 같은 속도로 200번 왕복(예: X 500 ↔ 3000mm). 평균과 흔들림 폭(σ) 계산</td></tr>
+        <tr><td>③ 일부러 고장</td><td>레일 테이프 2겹(마찰), 한쪽 바퀴 편심 볼트 1/4 풀기, 벨트 장력 한 단계 낮추기, FRAM 가감속 값 바꾸기(설정), 버스 쉬는 시간 0(통신). 기구 담당자와 함께, 저속부터</td></tr>
+        <tr><td>④ 비교</td><td>고장 상태로 50번. 평균이 평소보다 3σ 넘게 움직이면 "잡힘", 몇 번째 이동에서 처음 넘었는지 기록</td></tr>
+        <tr><td>⑤ 오경보</td><td>정상으로 2주 운전, 기준 넘는 횟수가 주 1회 이하인 지표만 "경고"를 켬</td></tr>
+      </table>
+    </div>
+    <div class="box">
+      <svg viewBox="0 0 600 270" role="img" aria-label="정상과 마찰 상태의 도착 시간 분포 예시">
+        <line x1="30" y1="220" x2="590" y2="220" stroke="var(--ink)"/>
+        <g font-size="10" fill="var(--muted)" text-anchor="middle"><text x="50" y="236">1440</text><text x="130" y="236">1460</text><text x="210" y="236">1480</text><text x="290" y="236">1500</text><text x="370" y="236">1520</text><text x="450" y="236">1540</text><text x="530" y="236">1560</text></g>
+        <text x="310" y="258" font-size="11" text-anchor="middle" fill="var(--muted)">X 도착 시간 (ms)</text>
+        <g fill="var(--steel)"><rect x="72" y="208" width="16" height="12"/><rect x="112" y="176" width="16" height="44"/><rect x="152" y="130" width="16" height="90"/><rect x="192" y="110" width="16" height="110"/><rect x="232" y="130" width="16" height="90"/><rect x="272" y="176" width="16" height="44"/><rect x="312" y="208" width="16" height="12"/></g>
+        <g fill="var(--accent)"><rect x="292" y="212" width="16" height="8"/><rect x="332" y="190" width="16" height="30"/><rect x="372" y="156" width="16" height="64"/><rect x="412" y="128" width="16" height="92"/><rect x="452" y="120" width="16" height="100"/><rect x="492" y="154" width="16" height="66"/><rect x="532" y="190" width="16" height="30"/></g>
+        <line x1="289" y1="40" x2="289" y2="220" stroke="var(--bad)" stroke-dasharray="5 4" stroke-width="1.5"/>
+        <text x="295" y="52" font-size="11" fill="var(--bad)">주의 기준 = 평소 + 3σ</text>
+        <text x="190" y="98" font-size="11.5" fill="var(--steel)" text-anchor="middle">평소 200회</text>
+        <text x="450" y="108" font-size="11.5" fill="var(--warn)" text-anchor="middle">레일 테이프 50회</text>
+        <text x="590" y="20" font-size="10" fill="var(--muted)" text-anchor="end">모양 예시 · 실측 아님</text>
+      </svg>
+      <div class="call g"><b>이 결과가 2단계를 정합니다.</b> 두 무더기가 기준선을 사이에 두고 갈라지면 펌웨어만으로 충분합니다. 많이 겹치는 고장(바퀴 풀림 초기, 흔들림)만 노드가 필요하다는 근거가 됩니다.</div>
+    </div>
+  </div>
+  <div class="ft"><span>3D 로더 고장 예방 v2</span><span>6</span></div>
+</section>
+
+<!-- 7 노드 배선 -->
+<section class="page">
+  <div class="hd"><span class="n">06</span><h2>2단계: 캐리지 노드는 어디에, 어떻게 연결하나</h2><span class="sub">긴 선은 이미 있다</span></div>
+  <div class="body c32">
+    <div class="box">
+      <svg viewBox="0 0 640 300" role="img" aria-label="제어반에서 케이블 베어를 지나 로봇까지 기존 선이 와 있고 노드는 로봇 하부에 30cm로 연결">
+        <line x1="150" y1="30" x2="630" y2="30" stroke="#9aa4ad" stroke-width="6"/><line x1="150" y1="250" x2="630" y2="250" stroke="var(--steel)" stroke-width="7"/>
+        <rect x="10" y="90" width="110" height="190" fill="#fff" stroke="var(--dark)"/><text x="65" y="112" font-size="12.5" text-anchor="middle" font-weight="700">제어반</text>
+        <rect x="22" y="124" width="86" height="56" fill="var(--pcb-soft)" stroke="var(--pcb)"/><text x="65" y="148" font-size="11" text-anchor="middle">메인 보드</text><text x="65" y="166" font-size="10" text-anchor="middle" fill="var(--muted)">UART2→RS485</text>
+        <rect x="400" y="34" width="120" height="18" fill="var(--dark)"/><rect x="432" y="52" width="8" height="166" fill="#c9cfd4"/><rect x="480" y="52" width="8" height="166" fill="#c9cfd4"/>
+        <rect x="380" y="218" width="160" height="24" fill="var(--dark)"/><circle cx="402" cy="248" r="8" fill="var(--dark)"/><circle cx="518" cy="248" r="8" fill="var(--dark)"/>
+        <rect x="524" y="36" width="56" height="20" fill="var(--steel-soft)" stroke="var(--steel)"/><text x="552" y="50" font-size="10" text-anchor="middle">X상 ID3</text>
+        <rect x="336" y="58" width="50" height="20" fill="var(--steel-soft)" stroke="var(--steel)"/><text x="361" y="72" font-size="10" text-anchor="middle">Y ID1</text>
+        <rect x="546" y="220" width="56" height="20" fill="var(--steel-soft)" stroke="var(--steel)"/><text x="574" y="234" font-size="10" text-anchor="middle">X하 ID4</text>
+        <path d="M120 268 H300 A16 16 0 0 1 300 236 H384" stroke="var(--accent)" stroke-width="8" stroke-dasharray="7 3" fill="none"/>
+        <rect x="386" y="190" width="40" height="22" rx="3" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="406" y="205" font-size="10.5" text-anchor="middle" font-weight="700">노드</text>
+        <rect x="140" y="190" width="200" height="38" rx="4" fill="#fff" stroke="var(--line)"/>
+        <text x="150" y="205" font-size="11" font-weight="700">긴 선은 이미 케이블 베어 안에</text><text x="150" y="221" font-size="10.5" fill="var(--muted)">24V · GND · RS485 A/B</text>
+        <rect x="250" y="110" width="140" height="46" rx="4" fill="var(--accent-soft)" stroke="var(--accent)"/>
+        <text x="260" y="128" font-size="11" font-weight="700">새 선: 30cm 1개</text><text x="260" y="146" font-size="10.5">로봇 하부에서 T 분기</text>
+        <path d="M370 156 L398 190" stroke="var(--accent)" stroke-width="1.5"/>
+      </svg>
+      <p class="note">X 모터 2개 · Y · TILT 드라이브가 모두 로봇에 타고 다니므로, 통신선과 24V는 원래 로봇까지 와 있습니다(지금 코드가 이동 중 ID3 · ID4를 읽는 것이 증거). 현장에서 케이블 베어 끝 커넥터 모양과 24V를 확인합니다.</p>
+    </div>
+    <div class="box">
+      <h3>RS485에 하나 더 다는 규칙</h3>
+      <table>
+        <tr><th>규칙</th><th>노드에서는</th></tr>
+        <tr><td>ID 겹치지 않게</td><td>ID5 (1 · 2 · 3 · 4 사용 중)</td></tr>
+        <tr><td>종단 120Ω은 양 끝에만</td><td>중간이라 기본 꺼짐 (점퍼 JP1)</td></tr>
+        <tr><td>분기선 짧게</td><td>30cm 이하</td></tr>
+        <tr><td>같은 속도 · 형식</td><td>115200bps, Modbus RTU, 읽기(0x03)만</td></tr>
+        <tr><td>브로드캐스트 무시</td><td>X 이동 명령 ID0은 대답 안 함</td></tr>
+      </table>
+      <div class="call"><b>T 분기를 추천합니다.</b> 노드를 빼거나 노드가 고장 나도 다른 드라이브 통신은 끊기지 않습니다. 진동 많은 곳이라 잠금형 커넥터를 씁니다.</div>
+    </div>
+  </div>
+  <div class="ft"><span>3D 로더 고장 예방 v2</span><span>7</span></div>
+</section>
+
+<!-- 8 노드 보드 -->
+<section class="page">
+  <div class="hd"><span class="n">07</span><h2>2단계: 노드 보드 구성과 부품비</h2><span class="sub">약 30 × 40mm · 2층 PCB</span></div>
+  <div class="body c2">
+    <div class="box">
+      <svg viewBox="0 0 560 300" role="img" aria-label="노드 회로 블록: J1, 퓨즈, 역전압, TVS, 벅, MCU, RS485, IMU">
+        <rect x="10" y="110" width="60" height="100" fill="#fff" stroke="var(--dark)"/><text x="40" y="104" font-size="12" text-anchor="middle" font-weight="700">J1</text>
+        <g font-size="10" font-family="Consolas"><text x="16" y="130">1 24V</text><text x="16" y="152">2 GND</text><text x="16" y="174">3 A</text><text x="16" y="196">4 B</text></g>
+        <path d="M70 126 H90 V40 H110" stroke="var(--bad)" stroke-width="1.5" fill="none"/>
+        <g font-size="10.5" text-anchor="middle"><rect x="110" y="28" width="46" height="24" fill="#fff" stroke="var(--line)"/><text x="133" y="44">F1 퓨즈</text>
+        <rect x="166" y="28" width="56" height="24" fill="#fff" stroke="var(--line)"/><text x="194" y="44">D1 역전압</text>
+        <rect x="232" y="28" width="50" height="24" fill="#fff" stroke="var(--line)"/><text x="257" y="44">D2 TVS</text>
+        <rect x="292" y="22" width="110" height="36" fill="#fff" stroke="var(--dark)"/><text x="347" y="38">U1 벅</text><text x="347" y="52" font-size="9.5">9~60V → 3.3V</text></g>
+        <path d="M156 40h10M222 40h10M282 40h10" stroke="var(--bad)"/>
+        <path d="M402 40 H540" stroke="var(--good)" stroke-width="2"/><text x="540" y="34" font-size="10" text-anchor="end" fill="var(--good)">3V3</text>
+        <rect x="120" y="140" width="110" height="80" fill="#fff" stroke="var(--dark)"/><text x="175" y="165" font-size="11.5" text-anchor="middle" font-weight="700">U4 RS485</text><text x="175" y="182" font-size="10" text-anchor="middle" fill="var(--muted)">THVD1450</text>
+        <path d="M70 170 H120 M70 192 H120" stroke="var(--steel)" stroke-width="1.5"/>
+        <rect x="270" y="110" width="130" height="140" fill="var(--dark)"/><text x="335" y="175" font-size="12.5" text-anchor="middle" fill="#fff" font-weight="700">U2 MCU</text><text x="335" y="193" font-size="10" text-anchor="middle" fill="#fff">STM32G431 (G4 계열)</text>
+        <path d="M230 160 H270 M230 180 H270 M230 200 H270" stroke="var(--dark)"/><text x="250" y="152" font-size="9.5" text-anchor="middle" fill="var(--muted)">USART</text>
+        <rect x="440" y="120" width="110" height="110" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="495" y="170" font-size="12" text-anchor="middle" font-weight="700" fill="var(--accent-ink)">U3 IMU</text><text x="495" y="188" font-size="10" text-anchor="middle">LSM6DSOX</text>
+        <path d="M400 135 H440 M400 155 H440 M400 175 H440 M400 195 H440 M400 215 H440" stroke="var(--dark)"/><text x="420" y="128" font-size="9.5" text-anchor="middle" fill="var(--muted)">SPI+INT</text>
+        <rect x="285" y="262" width="100" height="26" fill="#fff" stroke="var(--line)"/><text x="335" y="279" font-size="10.5" text-anchor="middle">J3 SWD (굽기)</text>
+      </svg>
+      <p class="note">IMU는 휴대폰 화면 회전 센서와 같은 칩(가속도 3축 + 자이로 3축). SPI 4선 + 깨우는 선 1개로 MCU와 연결 — 메인 보드가 W6100을 SPI + INT로 쓰는 것과 같은 구조입니다. IMU는 고정 나사 바로 옆에 둡니다.</p>
+    </div>
+    <div class="box">
+      <h3>부품비 (1대)</h3>
+      <table>
+        <tr><th>부품</th><th>하는 일</th><th>가격</th></tr>
+        <tr><td>MCU STM32G431</td><td>IMU 계산, Modbus 응답 (메인과 같은 G4)</td><td class="mono">2,000~7,000원</td></tr>
+        <tr><td>IMU LSM6DSOX</td><td>충격 · 흔들림 · 기울기</td><td class="mono">약 5,900원 ($4.21)</td></tr>
+        <tr><td>RS485 THVD1450</td><td>기존 버스 통신</td><td class="mono">1,000~3,000원</td></tr>
+        <tr><td>벅 컨버터 9~60V</td><td>24V → 3.3V</td><td class="mono">2,000~5,000원</td></tr>
+        <tr><td>보호 소자</td><td>역전압 · 서지 · 과전류</td><td class="mono">1,000~2,000원</td></tr>
+        <tr><td>커넥터 + 30cm 선</td><td>기존과 같은 잠금형</td><td class="mono">3,000~8,000원</td></tr>
+        <tr><td>PCB + 조립 (10장)</td><td>2층, 방습 코팅</td><td class="mono">5,000~15,000원</td></tr>
+        <tr><td>브라켓 · 나사</td><td>금속 스페이서, 쐐기 와셔</td><td class="mono">3,000~10,000원</td></tr>
+        <tr class="tot"><td>합계</td><td></td><td class="mono">약 3~6만원</td></tr>
+      </table>
+      <p class="note">책상 시험은 NUCLEO-G431RB(약 $16) + LSM6DSOX 시험 보드($11.95)로 먼저 합니다. 로더 50대 현장이면 노드 50 × 약 4만원 = 약 200만원(추정).</p>
+    </div>
+  </div>
+  <div class="ft"><span>3D 로더 고장 예방 v2</span><span>8</span></div>
+</section>
+
+<!-- 9 노드 값 + 버스 -->
+<section class="page">
+  <div class="hd"><span class="n">08</span><h2>2단계: 노드가 재는 값과 버스 시간</h2><span class="sub">이동 중에는 버스를 안 쓴다</span></div>
+  <div class="body c2">
+    <div class="box">
+      <h3>노드 레지스터 10개 (Modbus, ID5)</h3>
+      <table>
+        <tr><th>주소</th><th>값</th><th>단위</th><th>보려는 것</th></tr>
+        <tr><td class="mono">0x0000</td><td>이동 순번</td><td>회</td><td>같은 요약 두 번 읽기 방지</td></tr>
+        <tr><td class="mono">0x0001</td><td>최대 충격</td><td class="mono">g×100</td><td>바퀴 · 레일 이음매</td></tr>
+        <tr><td class="mono">0x0002</td><td>진동 크기 RMS</td><td class="mono">g×1000</td><td>바퀴 · 베어링 마모</td></tr>
+        <tr><td class="mono">0x0003</td><td>2g 넘는 충격 횟수</td><td>회</td><td>이음매 · 케이블 베어 스침</td></tr>
+        <tr><td class="mono">0x0004</td><td>정지 후 흔들림 주파수</td><td class="mono">Hz×10</td><td>체결 상태 (참고값)</td></tr>
+        <tr><td class="mono">0x0005</td><td>흔들림이 멈추는 시간</td><td>ms</td><td>체결 풀림 · 장력</td></tr>
+        <tr><td class="mono">0x0006</td><td>롤</td><td class="mono">°×100</td><td>바퀴 빠짐 · 처짐</td></tr>
+        <tr><td class="mono">0x0007</td><td>피치</td><td class="mono">°×100</td><td>바퀴 빠짐 · 처짐</td></tr>
+        <tr><td class="mono">0x0008</td><td>상태 비트</td><td>비트</td><td>IMU 오류, 노드 풀림 의심</td></tr>
+        <tr><td class="mono">0x0009</td><td>칩 온도</td><td class="mono">℃×10</td><td>0점 온도 보정</td></tr>
+      </table>
+    </div>
+    <div class="box">
+      <h3>버스 시간표 (115200bps)</h3>
+      <svg viewBox="0 0 560 200" role="img" aria-label="29ms 주기 안에 9ms 읽기와 20ms 쉼, 도착 뒤 노드 읽기 5ms">
+        <text x="0" y="16" font-size="11.5" font-weight="700">이동 중 (지금 코드 그대로) · 1ms = 4.6px</text>
+        <g transform="translate(0 26)"><rect x="0" y="0" width="21" height="22" fill="var(--steel)"/><rect x="21" y="0" width="21" height="22" fill="var(--accent)"/><rect x="42" y="0" width="92" height="22" fill="var(--soft)"/>
+          <rect x="134" y="0" width="21" height="22" fill="var(--steel)"/><rect x="155" y="0" width="21" height="22" fill="var(--accent)"/><rect x="176" y="0" width="92" height="22" fill="var(--soft)"/>
+          <rect x="268" y="0" width="21" height="22" fill="var(--steel)"/><rect x="289" y="0" width="21" height="22" fill="var(--accent)"/><rect x="310" y="0" width="92" height="22" fill="var(--soft)"/>
+          <text x="88" y="15" font-size="10" text-anchor="middle" fill="var(--muted)">쉼 20ms</text>
+          <text x="0" y="40" font-size="10" fill="var(--steel)">■ ID3 4.5ms</text><text x="80" y="40" font-size="10" fill="var(--warn)">■ ID4 4.5ms</text><text x="170" y="40" font-size="10" fill="var(--muted)">한 바퀴 ≈ 29ms → 버스 약 31%</text></g>
+        <text x="0" y="110" font-size="11.5" font-weight="700">도착 뒤 노드 한 번 (새로 생김)</text>
+        <g transform="translate(0 120)"><rect x="0" y="0" width="32" height="22" fill="var(--steel)"/><rect x="32" y="0" width="14" height="22" fill="var(--soft)"/><rect x="46" y="0" width="100" height="22" fill="var(--accent)"/><rect x="146" y="0" width="92" height="22" fill="var(--soft)"/>
+          <text x="96" y="15" font-size="10" text-anchor="middle">대답 25B 2.2ms</text><text x="250" y="15" font-size="11" font-weight="700">≈ 5ms, 이동 1번에 1회</text>
+          <text x="0" y="40" font-size="10" fill="var(--muted)">보냄 8B 0.7 · 노드 생각 0.3 · 대답 2.2 · 쉼 2  →  1.5초 이동이면 0.3%</text></g>
+      </svg>
+      <p class="note">노드는 IMU 값을 1초에 1,600번 받아 자기 안에서 계산하고, 메인 보드가 도착 뒤 물을 때 요약 10개만 대답합니다. 원본 진동 데이터는 버스로 보내지 않습니다.</p>
+    </div>
+  </div>
+  <div class="ft"><span>3D 로더 고장 예방 v2</span><span>9</span></div>
+</section>
+
+<!-- 10 판단 규칙 -->
+<section class="page">
+  <div class="hd"><span class="n">09</span><h2>판단 규칙: AI 없이 "평소와 얼마나 다른가"</h2><span class="sub">기준 = 그 로더의 최근 7일 중앙값</span></div>
+  <div class="body c2">
+    <div class="box">
+      <table>
+        <tr><th>지표</th><th>어디서</th><th>주의</th><th>경고</th><th>의심 부품</th></tr>
+        <tr><td>X 도착 시간 (같은 거리 · 속도)</td><td>메인</td><td>+15%</td><td>+30%</td><td>벨트 마찰, 레일 이물</td></tr>
+        <tr><td>X 두 모터 위치 차이</td><td>메인</td><td>1.5mm</td><td>3mm</td><td>늦은 쪽 바퀴 · 벨트</td></tr>
+        <tr><td>같은 X 구간 통신 오류</td><td>메인</td><td>하루 2회</td><td>5회</td><td>케이블 베어 이탈</td></tr>
+        <tr><td>정지 후 흔들림 시간 (진단 동작)</td><td>노드</td><td>+30%</td><td>+60%</td><td>벨트 장력 · 체결</td></tr>
+        <tr><td>같은 칸 기울기 변화 (온도 보정)</td><td>노드</td><td>0.15°</td><td>0.3°</td><td>바퀴 축 볼트</td></tr>
+        <tr><td>최대 충격 (같은 구간)</td><td>노드</td><td>2.0g</td><td>2.5g 반복</td><td>바퀴, 레일 이음매</td></tr>
+        <tr><td>보드 3.3V</td><td>메인</td><td>3.23V</td><td>3.18V</td><td>전원부</td></tr>
+        <tr><td>도착 실패 + 축잠금</td><td>메인</td><td>—</td><td>같은 칸 하루 3회</td><td>끼임 · 토트 위치</td></tr>
+      </table>
+      <p class="note">숫자는 시작값이며 2주 기록으로 현장마다 조정합니다. 오경보가 주 1회 이하인 지표만 경고를 켭니다. 처음 4주는 알림만 보내고 로더를 세우지 않습니다.</p>
+    </div>
+    <div class="box">
+      <h3>확신도 (솔직한 판단)</h3>
+      <table>
+        <tr><th>고장</th><th>얼마나 미리</th><th>확신도</th></tr>
+        <tr><td>물건 끼임</td><td>생긴 즉시</td><td><span class="chip g">높음</span></td></tr>
+        <tr><td>코드 vs 조립 구분</td><td>사무실에서 판정</td><td><span class="chip g">높음</span></td></tr>
+        <tr><td>마찰 증가</td><td>나빠지는 동안</td><td><span class="chip g">높음</span></td></tr>
+        <tr><td>바퀴 풀림</td><td>며칠~몇 주 전</td><td><span class="chip g">높음</span> 같은 칸 비교</td></tr>
+        <tr><td>케이블 베어 이탈</td><td>올라타기 전 일부</td><td><span class="chip s">중간</span></td></tr>
+        <tr><td>벨트 장력 저하</td><td>중간 단계</td><td><span class="chip w">시험 필요</span></td></tr>
+        <tr><td>벨트 쏠림 초기</td><td>직전</td><td><span class="chip b">낮음</span> 풀리 센서 필요</td></tr>
+      </table>
+      <div class="call y"><b>v1에서 고친 점.</b> 노드가 재는 "멈춘 로봇의 앞뒤 출렁임"은 기타 줄 원리(장력 ∝ 주파수²)와 다릅니다. 위치 · 서보 게인 · 마스트 흔들림의 영향이 커서, 하루 한 번 <b>같은 위치에서 같은 진단 동작</b>을 하고 흔들림이 멈추는 시간의 변화만 봅니다. 장력과의 관계는 시험 장비에서 확인합니다.</div>
+    </div>
+  </div>
+  <div class="ft"><span>3D 로더 고장 예방 v2</span><span>10</span></div>
+</section>
+
+<!-- 11 알림 + QR -->
+<section class="page">
+  <div class="hd"><span class="n">10</span><h2>알림 경로와 3D 시뮬레이터</h2><span class="sub">보드는 인터넷에 직접 붙지 않는다</span></div>
+  <div class="body c32">
+    <div class="box">
+      <svg viewBox="0 0 640 210" role="img" aria-label="노드, 메인 보드, 현장 PC, 알림, 휴대폰 순서의 알림 경로">
+        <g font-size="12" text-anchor="middle">
+          <rect x="0" y="40" width="110" height="56" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="55" y="64" font-weight="700">① 노드</text><text x="55" y="82" font-size="10" fill="var(--muted)">요약 20B</text>
+          <rect x="130" y="40" width="110" height="56" rx="5" fill="var(--pcb-soft)" stroke="var(--pcb)"/><text x="185" y="64" font-weight="700">② 메인 보드</text><text x="185" y="82" font-size="10" fill="var(--muted)">비교 · FRAM</text>
+          <rect x="260" y="40" width="110" height="56" rx="5" fill="#fff" stroke="var(--dark)"/><text x="315" y="64" font-weight="700">③ 현장 PC</text><text x="315" y="82" font-size="10" fill="var(--muted)">DG_ 메시지</text>
+          <rect x="390" y="40" width="110" height="56" rx="5" fill="var(--steel-soft)" stroke="var(--steel)"/><text x="445" y="64" font-weight="700">④ 알림</text><text x="445" y="82" font-size="10" fill="var(--muted)">웹훅 · 봇 · FCM</text>
+          <rect x="520" y="30" width="110" height="76" rx="14" fill="var(--dark)"/><text x="575" y="72" fill="#fff" font-weight="700">⑤ 휴대폰</text>
+          <g fill="var(--muted)" font-size="10"><text x="120" y="34">RS485</text><text x="250" y="34">TCP</text><text x="380" y="34">인터넷</text></g>
+        </g>
+        <path d="M110 68h20M240 68h20M370 68h20M500 68h20" stroke="var(--dark)" stroke-width="2"/>
+        <g font-size="11"><text x="0" y="140" font-weight="700">단계별 알림 방법</text>
+        <text x="0" y="162">1. 사내 메신저 · 메일 웹훅 — 0원, 가장 빠름</text>
+        <text x="0" y="182">2. 텔레그램 같은 봇 — 0원, 푸시 + 그래프 이미지</text>
+        <text x="0" y="202">3. 자체 앱 (푸시 FCM) — 개발 인력 필요</text></g>
+        <g font-size="11"><text x="360" y="140" font-weight="700">무선 (C안, RS485가 로봇까지 없을 때만)</text>
+        <text x="360" y="162">노드 + ESP32-C3 → 공유기 → PC</text>
+        <text x="360" y="182" fill="var(--muted)">고객 IT 허락 · 금속 랙 전파 음영 확인 필요</text></g>
+      </svg>
+      <div class="call"><b>추천은 유선.</b> 메인 보드가 이미 W6100으로 현장 PC와 연결되어 있으므로, PC 프로그램 담당자와 진단 메시지 형식(DG_…)만 약속하면 됩니다. 인터넷으로 나가는 곳이 PC 한 곳이라 보안 검토도 한 곳만 합니다.</div>
+    </div>
+    <div class="box">
+      <h3>휴대폰으로 직접 보기</h3>
+      <div class="qr"><div class="code"><img id="q1" alt="3D 시뮬레이터 QR"></div><p><b>3D 시뮬레이터</b><br>고장을 고르면 로더에서 고장이 진행되고, ①~⑤ 알림 길이 차례로 켜집니다.</p></div>
+      <div class="qr"><div class="code"><img id="q2" alt="앱 화면 QR"></div><p><b>휴대폰 앱 화면</b><br>발표 화면에서 고장을 고르면 이 화면에 실시간 알림이 옵니다(사내 계정). 연결이 없으면 데모가 재생됩니다.</p></div>
+      <p class="note">claude.ai 페이지의 공유 설정을 켜 두어야 다른 사람이 열 수 있습니다.</p>
+    </div>
+  </div>
+  <div class="ft"><span>3D 로더 고장 예방 v2</span><span>11</span></div>
+</section>
+
+<!-- 12 일정 비용 -->
+<section class="page">
+  <div class="hd"><span class="n">11</span><h2>일정 · 비용 · 효과</h2><span class="sub">엑셀 6. 기간·인력·비용 / 7. 효과 및 검증 · 2027 업무추진계획서 기준</span></div>
+  <div class="body">
+    <svg viewBox="0 0 1000 210" role="img" aria-label="2027년 월별 일정">
+      <g font-size="11" fill="var(--muted)"><text x="250" y="16">1월</text><text x="370" y="16">3월</text><text x="490" y="16">5월</text><text x="610" y="16">7월</text><text x="730" y="16">9월</text><text x="850" y="16">11월</text></g>
+      <g stroke="var(--line)"><path d="M250 22V200M370 22V200M490 22V200M610 22V200M730 22V200M850 22V200M970 22V200"/></g>
+      <g font-size="12.5">
+        <text x="0" y="46">1단계 블랙박스 · 보드 건강 구현</text><rect x="250" y="34" width="120" height="16" rx="3" fill="var(--steel)"/>
+        <text x="0" y="72">시험 장비 기록 · 재현 시험</text><rect x="370" y="60" width="60" height="16" rx="3" fill="var(--steel)"/>
+        <text x="0" y="98">메신저 알림 시범 (현장 1곳)</text><rect x="400" y="86" width="90" height="16" rx="3" fill="var(--steel)" opacity=".7"/>
+        <text x="0" y="124">노드 회로 · PCB (OrCAD, 회로 검토)</text><rect x="490" y="112" width="120" height="16" rx="3" fill="var(--accent)"/>
+        <text x="0" y="150">노드 펌웨어 · 책상 시험</text><rect x="520" y="138" width="120" height="16" rx="3" fill="var(--accent)"/>
+        <text x="0" y="176">시험 장비 부착 · 재현 · 현장 1대</text><rect x="640" y="164" width="150" height="16" rx="3" fill="var(--accent)"/>
+      </g>
+      <path d="M430 30 l6 6 l-6 6 l-6 -6z" fill="var(--dark)"/><text x="440" y="40" font-size="10.5" font-weight="700">2단계 할지 결정</text>
+    </svg>
+    <div class="c2">
+      <div class="box">
+        <table>
+          <tr><th>항목</th><th>비용 (추정)</th></tr>
+          <tr><td>1단계 펌웨어 (기존 보드)</td><td class="mono">부품 0원</td></tr>
+          <tr><td>노드 개발용 (NUCLEO + IMU 보드)</td><td class="mono">약 4만원</td></tr>
+          <tr><td>노드 시제품 PCB 10장</td><td class="mono">30~60만원</td></tr>
+          <tr><td>양산 노드 1대</td><td class="mono">약 3~5만원</td></tr>
+          <tr><td>알림 1~2단계 (웹훅 · 봇)</td><td class="mono">0원</td></tr>
+          <tr><td>인력</td><td>펌웨어 1(본인) + 회로 검토 0.5 + PC 프로그램 담당 협의</td></tr>
+        </table>
+      </div>
+      <div class="box">
+        <table>
+          <tr><th>측정할 효과</th><th>방법</th></tr>
+          <tr><td>원인 불명 AS 건수</td><td>적용 전후 6개월 비교</td></tr>
+          <tr><td>원인 파악 시간</td><td>블랙박스로 사무실에서 판정한 비율</td></tr>
+          <tr><td>현장 출동 횟수</td><td>예방 정비로 바뀐 건수</td></tr>
+          <tr><td>부품 파손 (끼임 2차 손상)</td><td>즉시 정지 후 파손 건수</td></tr>
+        </table>
+        <p class="note">제안서에 넣을 숫자: 작년 원인 불명 AS 건수 × 건당 출동 비용 (사내 AS 기록에서 확인 필요).</p>
+      </div>
+    </div>
+  </div>
+  <div class="ft"><span>3D 로더 고장 예방 v2</span><span>12</span></div>
+</section>
+
+<!-- 13 엑셀 -->
+<section class="page">
+  <div class="hd"><span class="n">12</span><h2>엑셀 「아이디어 제안」 항목별 내용</h2><span class="sub">옮겨 적을 문장</span></div>
+  <div class="body">
+    <table style="font-size:10.8px">
+      <tr><th style="width:15%">항목</th><th>내용</th></tr>
+      <tr><td>아이디어명</td><td>3D 로더 고장 예방 (1단계 펌웨어 블랙박스 · 보드 건강 체크 → 2단계 캐리지 노드)</td></tr>
+      <tr><td>1. 배경·현장 문제</td><td>벨트 올라탐 · 바퀴 빠짐 · 벨트 끊어짐 · 끼임 · 케이블 베어 이탈이 반복되지만 고장 순간 값이 남지 않아, 코드 · 설정 · 조립 중 무엇이 원인인지 현장 재현 전에는 알 수 없음. 실제 사례 3건(A06 가감속 설정, ALARM 02 버스 간격, H05_09 변경).</td></tr>
+      <tr><td>2. 제품·서비스</td><td>① 기존 보드 펌웨어에 이동 요약 기록 · 평소 대비 판단 · 알람 블랙박스 · 메인 보드 건강 체크(부품 0원). ② 필요 시 캐리지 노드(30×40mm, IMU, RS485 ID5). ③ 기존 PC 경유 개발자 알림.</td></tr>
+      <tr><td>3. 기능·구현</td><td>IM_Arrive · AM_Arrive가 이미 읽는 두 모터 위치 · 도착 시간 · 반복 횟수와 알람 · 통신 오류를 이동마다 32B로 FRAM 링버퍼(128건)에 저장, 7일 중앙값 대비 %로 주의/경고. VREFINT · 온도 · 리셋 원인으로 보드 상태 판단. 노드는 도착 후 1회 읽기(약 5ms). 카메라 · AI 없음.</td></tr>
+      <tr><td>4. 경쟁·차별성</td><td>범용 진동센서는 로봇의 위치 · 명령 · 설정 맥락이 없음. 본 제안은 명령과 결과를 같은 시간축에 기록해 원인을 구분하고, 기존 선에 T 분기로 붙여 케이블 베어 배선 추가가 없음.</td></tr>
+      <tr><td>5. 고객·판매</td><td>1차 자사 로더 기본 탑재(AS 절감), 2차 기존 고객 펌웨어 업데이트 · 노드 후장착, 3차 예지보전 옵션 · 유지보수 계약.</td></tr>
+      <tr><td>6. 기간·인력·비용</td><td>1단계 약 3~4개월(부품 0원) → 재현 시험으로 2단계 결정 → 노드 6~8개월(개발용 4만원 + PCB 30~60만원). 펌웨어 1(본인) + 회로 검토 0.5 + PC 담당 협의. 전체 약 1년.</td></tr>
+      <tr><td>7. 효과·검증</td><td>원인 불명 AS · 출동 · 부품 파손 감소. 200회 평소 기록 → 일부러 고장 → 3σ 이상 변하면 감지 인정, 2주 오경보 주 1회 이하만 경고. 위험: 벨트 쏠림 초기는 한계 → 필요 시 풀리 센서.</td></tr>
+      <tr><td>8. 출처</td><td>Gates 벨트 트래킹, Pfeifer, Sensors 2021 IMU 예지보전, ST LSM6DSOX · STM32G431, TI THVD1450, DigiKey 가격, 사내 threeD_roder 작업 기록 (다음 쪽)</td></tr>
+      <tr><td>9. 예상 질문</td><td>"선이 늘지 않나?" → 긴 선은 이미 있음, T 분기 30cm. "AI 없이 되나?" → 고장 종류가 정해져 있어 평소 대비 규칙, 1단계 시험으로 먼저 증명. "노드가 고장 나면?" → 분기형이라 운전에 영향 없음, 노드 자기 점검 비트. "보드 고장도?" → 서서히 나빠지는 것은 0원으로 감시.</td></tr>
+    </table>
+  </div>
+  <div class="ft"><span>3D 로더 고장 예방 v2</span><span>13</span></div>
+</section>
+
+<!-- 14 출처 -->
+<section class="page">
+  <div class="hd"><span class="n">13</span><h2>출처</h2><span class="sub">확인일 2026-10-26</span></div>
+  <div class="body">
+    <table>
+      <tr><th style="width:12%">구분</th><th>자료</th><th>주소</th></tr>
+      <tr><td>기술</td><td>How to prevent and diagnose timing belt tracking / Gates</td><td class="mono">gatestechzone.com</td></tr>
+      <tr><td>기술</td><td>Timing Belt Tracking / Pfeifer Industries</td><td class="mono">pfeiferindustries.com</td></tr>
+      <tr><td>기술</td><td>Sonic Tension Meter 매뉴얼 (줄 진동과 장력의 관계, 본 제안에서는 참고만)</td><td class="mono">gates.com</td></tr>
+      <tr><td>기술</td><td>AI-Enabled Predictive Maintenance Framework for Autonomous Mobile Cleaning Robots / Sensors 2021</td><td class="mono">ncbi.nlm.nih.gov/pmc/articles/PMC8747287</td></tr>
+      <tr><td>부품</td><td>ST LSM6DSOX · STM32G431 · NUCLEO-G431RB, TI THVD1450, Adafruit 4438</td><td class="mono">st.com · ti.com · adafruit.com</td></tr>
+      <tr><td>가격</td><td>LSM6DSOX 단가 · NUCLEO 평가보드 / DigiKey</td><td class="mono">digikey.com</td></tr>
+      <tr><td>사내</td><td>threeD_roder 펌웨어 (i_motor.c IM_Arrive · IM_Pos, alarm.h ARRIVE_MS, CLAUDE.md 성능표 · 알람 사례)</td><td class="mono">STM32CubeIDE workspace</td></tr>
+      <tr><td>시연</td><td>로더 진단 시뮬레이터 (3D + 휴대폰 앱 화면)</td><td class="mono">claude.ai/artifact/SWQzcwXL1nVw9D7KqGxso7</td></tr>
+    </table>
+    <p class="note">"추정"으로 표시한 가격과 기간은 일반 시장 가격과 개발 경험에 기반한 대략값이며 견적으로 바꿔야 합니다. 그림은 개념도이며 실제 치수와 다를 수 있습니다. 판정 기준 숫자는 시작값이며 현장 기록으로 조정합니다.</p>
+  </div>
+  <div class="ft"><span>3D 로더 고장 예방 v2</span><span>14</span></div>
+</section>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script>
+(function(){
+  if (typeof qrcode==='undefined') return;
+  function png(t){ var q=qrcode(0,'M'); q.addData(t); q.make(); var n=q.getModuleCount(), cell=8, m=3, s=(n+2*m)*cell, c=document.createElement('canvas'); c.width=c.height=s; var x=c.getContext('2d'); x.fillStyle='#fff'; x.fillRect(0,0,s,s); x.fillStyle='#000'; for (var r=0;r<n;r++) for (var k=0;k<n;k++) if (q.isDark(r,k)) x.fillRect((k+m)*cell,(r+m)*cell,cell,cell); return c.toDataURL('image/png'); }
+  var U='https://claude.ai/artifact/SWQzcwXL1nVw9D7KqGxso7';
+  document.getElementById('q1').src=png(U+'#sim'); document.getElementById('q2').src=png(U+'#app');
+})();
+</script>
+</body></html>

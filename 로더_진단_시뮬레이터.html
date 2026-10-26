@@ -1,0 +1,448 @@
+<title>로더 진단 시뮬레이터</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+KR:wght@400;600;700&display=swap">
+<style>
+/* Layout: 휴대폰 먼저 — 위 3D 무대, 아래 데이터 흐름 띠 · 판정표 · 앱 화면. #app 은 앱 화면만 (QR로 여는 휴대폰용) */
+:root{
+  --bg:#F2F4F3; --paper:#FFFFFF; --ink:#17201E; --muted:#56645F; --line:#CDD7D3; --soft:#E6ECE9; --grid:#E3E9E6;
+  --copper:#B4632A; --copper-soft:#F6E7DA; --steel:#2C5B86; --steel-soft:#E1EBF4;
+  --good:#2E7A4C; --good-soft:#DFF0E5; --warn:#A85E15; --warn-soft:#F7EBDD; --bad:#B23B3B; --bad-soft:#F6E0E0;
+  --f-body:"IBM Plex Sans KR","Malgun Gothic","Apple SD Gothic Neo",sans-serif;
+  --f-mono:"IBM Plex Mono",Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#101615; --paper:#171F1E; --ink:#E3EAE7; --muted:#9AA8A4; --line:#2D3937; --soft:#1F2927; --grid:#1A2321;
+  --copper:#E39A5E; --copper-soft:#3A2A1D; --steel:#82B2DE; --steel-soft:#1B2B3A;
+  --good:#63C08A; --good-soft:#1B3125; --warn:#E7A262; --warn-soft:#3A2C1C; --bad:#E57777; --bad-soft:#3A2020; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#101615; --paper:#171F1E; --ink:#E3EAE7; --muted:#9AA8A4; --line:#2D3937; --soft:#1F2927; --grid:#1A2321;
+  --copper:#E39A5E; --copper-soft:#3A2A1D; --steel:#82B2DE; --steel-soft:#1B2B3A;
+  --good:#63C08A; --good-soft:#1B3125; --warn:#E7A262; --warn-soft:#3A2C1C; --bad:#E57777; --bad-soft:#3A2020; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.6;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1100px;margin:0 auto;padding-block:20px 60px;display:grid;gap:18px}
+h1{margin:0;font-size:clamp(21px,3.4vw,30px);line-height:1.3;text-wrap:balance}
+h2{margin:0;font-size:16px}
+p{margin:0;max-width:70ch}
+.meta{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.tabs{display:flex;gap:6px;flex-wrap:wrap}
+.tabs a{font-size:13.5px;padding:6px 12px;border:1px solid var(--line);border-radius:999px;color:var(--ink);text-decoration:none;background:var(--paper)}
+.tabs a[aria-current="page"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:14px;display:grid;gap:10px;min-width:0}
+.stage{position:relative;border-radius:6px;overflow:hidden;background:var(--grid);aspect-ratio:16/9;max-width:100%;touch-action:pan-y;cursor:grab}
+@media (max-width:640px){.stage{aspect-ratio:4/3}}
+.stage canvas{display:block;width:100%;height:100%}
+.stage .tag{position:absolute;transform:translate(-50%,-50%);font-family:var(--f-mono);font-size:11px;font-weight:600;min-width:22px;height:22px;padding:0 5px;border-radius:11px;display:grid;place-items:center;background:var(--copper);color:#fff;border:2px solid var(--paper);pointer-events:none;white-space:nowrap}
+.stage .fallback{position:absolute;inset:0;display:grid;place-items:center;padding:20px;text-align:center;color:var(--muted)}
+.stage .phase{position:absolute;left:8px;bottom:8px;font-family:var(--f-mono);font-size:11.5px;background:var(--paper);color:var(--ink);padding:2px 8px;border-radius:4px;opacity:.92}
+.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
+.chips button{flex:none;font:inherit;font-size:13.5px;padding:7px 12px;border:1px solid var(--line);border-radius:999px;background:var(--paper);color:var(--ink);cursor:pointer}
+.chips button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.chips .lbl{flex:none;align-self:center;font-family:var(--f-mono);font-size:11.5px;color:var(--muted)}
+button:focus-visible,a:focus-visible{outline:2px solid var(--copper);outline-offset:2px}
+/* 데이터 흐름 띠 */
+.flow{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;position:relative}
+.hop{border:1px solid var(--line);border-radius:6px;padding:8px;display:grid;gap:2px;background:var(--paper);transition:background .25s,border-color .25s,transform .25s;min-width:0}
+.hop b{font-size:13px}
+.hop span{font-size:11.5px;color:var(--muted);line-height:1.35}
+.hop.on{transform:translateY(-2px)}
+.hop.on.s{background:var(--steel-soft);border-color:var(--steel)}
+.hop.on.w{background:var(--warn-soft);border-color:var(--warn)}
+.hop.on.b{background:var(--bad-soft);border-color:var(--bad)}
+.hop.skip{opacity:.4}
+@media (max-width:640px){.flow{grid-template-columns:1fr}.hop{grid-template-columns:110px 1fr;align-items:center}}
+.grid2{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:14px}
+@media (max-width:860px){.grid2{grid-template-columns:1fr}}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px;min-width:480px}
+th,td{text-align:left;padding:7px 9px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:var(--f-mono);font-weight:600;font-size:11px;color:var(--muted);background:var(--soft)}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.chip{display:inline-block;font-family:var(--f-mono);font-size:11px;padding:0 6px;border-radius:3px;white-space:nowrap}
+.g{background:var(--good-soft);color:var(--good)} .s{background:var(--steel-soft);color:var(--steel)}
+.w{background:var(--warn-soft);color:var(--warn)} .b{background:var(--bad-soft);color:var(--bad)}
+/* 휴대폰 */
+.phone{background:#141a1d;border-radius:30px;padding:10px;width:100%;max-width:300px;justify-self:center;position:relative}
+.screen{background:var(--bg);border-radius:22px;min-height:470px;padding:12px;display:grid;gap:8px;align-content:start;overflow:hidden;position:relative}
+.app-full .screen{min-height:calc(100vh - 120px);border-radius:0;padding:14px 0;background:transparent}
+.app-full .phone{background:transparent;padding:0;max-width:520px;border-radius:0}
+.ptop{display:flex;justify-content:space-between;align-items:baseline}
+.ptop b{font-size:14px}
+.ptop span{font-family:var(--f-mono);font-size:11px;color:var(--muted)}
+.conn{font-size:11.5px;border-radius:4px;padding:3px 8px;background:var(--soft);color:var(--muted)}
+.conn.live{background:var(--good-soft);color:var(--good)}
+.unit{display:flex;gap:8px;align-items:center;background:var(--paper);border-radius:10px;padding:9px}
+.unit i{flex:none;width:12px;height:12px;border-radius:50%;background:var(--good);transition:background .3s}
+.unit b{display:block;font-size:13px}
+.unit span{font-size:11.5px;color:var(--muted)}
+.notis{display:grid;gap:6px}
+.nt{border-radius:10px;padding:9px 10px;font-size:12.5px;line-height:1.45;background:var(--paper);border-left:4px solid var(--steel)}
+.nt b{display:block;font-size:12.5px}
+.nt small{display:block;color:var(--muted);font-family:var(--f-mono);font-size:10.5px;margin-top:2px}
+.nt.w{border-left-color:var(--warn)} .nt.w b{color:var(--warn)}
+.nt.b{border-left-color:var(--bad)} .nt.b b{color:var(--bad)}
+.nt.s b{color:var(--steel)}
+.empty{font-size:12px;color:var(--muted);text-align:center;padding:10px}
+.push{position:absolute;left:8px;right:8px;top:8px;background:var(--paper);border-radius:12px;padding:9px 11px;box-shadow:0 6px 22px rgba(0,0,0,.25);font-size:12.5px;transform:translateY(-130%);transition:transform .35s ease;z-index:3}
+.push.show{transform:none}
+.push b{display:block;font-size:12.5px}
+.push small{font-family:var(--f-mono);font-size:10.5px;color:var(--muted)}
+@media (prefers-reduced-motion: reduce){.push,.hop{transition:none}}
+.qr{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:12px}
+.qr figure{margin:0;display:grid;grid-template-columns:96px minmax(0,1fr);gap:10px;align-items:center}
+.qr .code{width:96px;height:96px;background:#fff;padding:4px;border-radius:4px}
+.qr .code svg{display:block;width:100%;height:100%}
+.qr figcaption{font-size:12.5px;color:var(--muted)}
+.qr figcaption b{display:block;color:var(--ink);font-size:13.5px}
+.note{font-size:12.5px;color:var(--muted)}
+.log{list-style:none;margin:0;padding:0;display:grid;gap:4px;font-size:12.5px}
+.log li{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px}
+[hidden]{display:none!important}
+</style>
+
+<div class="wrap" id="top">
+  <header style="display:grid;gap:8px">
+    <p class="meta">아이디어 1 · 3D 로더 고장 예방 · 박성원</p>
+    <h1>고장이 생기면 휴대폰까지 어떻게 가나</h1>
+    <nav class="tabs" aria-label="화면">
+      <a href="#sim" id="tSim" aria-current="page">3D 시뮬레이션</a>
+      <a href="#app" id="tApp">휴대폰 앱 화면</a>
+    </nav>
+  </header>
+
+  <!-- 시뮬레이션 화면 -->
+  <section id="vSim" style="display:grid;gap:14px">
+    <p>고장을 고르면 로더에서 고장이 진행되고, <b>노드 → 메인 보드 → 현장 PC → 알림 서버 → 휴대폰</b>으로 알림이 가는 길이 차례로 켜져요. AI 없이 "평소 값과 얼마나 다른가"만으로 판단해요. 화면을 끌면 로더를 돌려 볼 수 있어요.</p>
+    <div class="card">
+      <div class="stage" id="stage" aria-label="3D 로더 모델. 좌우로 끌면 돌려 볼 수 있음">
+        <div class="fallback" id="fallback" hidden>이 기기에서는 3D를 그릴 수 없어요. 아래 흐름과 앱 화면은 그대로 동작해요.</div>
+        <span class="phase" id="phase"></span>
+      </div>
+      <div class="chips" id="faults" role="group" aria-label="고장 고르기">
+        <span class="lbl">고장</span>
+        <button type="button" data-f="none" aria-pressed="true">정상</button>
+        <button type="button" data-f="wheel" aria-pressed="false">바퀴 풀림</button>
+        <button type="button" data-f="friction" aria-pressed="false">레일 마찰</button>
+        <button type="button" data-f="tension" aria-pressed="false">벨트 장력·체결</button>
+        <button type="button" data-f="jam" aria-pressed="false">물건 끼임</button>
+        <button type="button" data-f="bear" aria-pressed="false">케이블 베어 이탈</button>
+        <button type="button" data-f="board" aria-pressed="false">메인 보드 전원 노화</button>
+      </div>
+      <div class="chips" role="group" aria-label="보기">
+        <span class="lbl">보기</span>
+        <button type="button" id="v1">비스듬히</button>
+        <button type="button" id="v2">통로 정면</button>
+        <button type="button" id="v3">캐리지 가까이</button>
+        <button type="button" id="vTags" aria-pressed="true">이름표</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>알림이 가는 길</h2>
+      <div class="flow" id="flow">
+        <div class="hop" data-i="0"><b>① 노드 ID5</b><span>IMU 1,600번/초 → 이동마다 요약 20바이트</span></div>
+        <div class="hop" data-i="1"><b>② 메인 보드</b><span>RS485로 한 번 읽기(5ms) · 평소 대비 비교 · FRAM 기록</span></div>
+        <div class="hop" data-i="2"><b>③ 현장 PC</b><span>기존 TCP(W6100)로 <span class="mono">DG_</span> 메시지</span></div>
+        <div class="hop" data-i="3"><b>④ 알림 서버</b><span>메신저 웹훅 · 봇 · 앱 푸시(FCM)</span></div>
+        <div class="hop" data-i="4"><b>⑤ 휴대폰</b><span>경고·정지 즉시 푸시, 주의는 하루 요약</span></div>
+      </div>
+      <p class="note" id="flowNote">고장을 골라 보세요. 판정이 바뀌는 순간 이 길이 차례로 켜져요.</p>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <h2>이번 이동 · 메인 보드의 비교</h2>
+        <div class="tbl"><table>
+          <thead><tr><th>지표</th><th>어디서</th><th>평소</th><th>이번</th><th>판정</th></tr></thead>
+          <tbody id="jbody"></tbody>
+        </table></div>
+        <ul class="log" id="log"></ul>
+      </div>
+      <div class="card" style="align-content:start">
+        <h2>개발자 앱 (같은 순간)</h2>
+        <div class="phone" id="phoneSim"></div>
+      </div>
+    </div>
+
+    <div class="card" id="qrCard" hidden>
+      <h2>휴대폰으로 받아 보기</h2>
+      <div class="qr">
+        <figure><div class="code" id="qrApp"></div><figcaption><b>앱 화면 열기</b>이 화면에서 고장을 고르면, QR로 연 휴대폰에도 알림이 떠요(같은 회사 계정으로 로그인한 경우). 연결이 안 되면 데모가 자동으로 재생돼요.</figcaption></figure>
+        <figure><div class="code" id="qrSim"></div><figcaption><b>3D 시뮬레이션 열기</b>휴대폰에서 이 페이지 전체를 봐요.</figcaption></figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- 앱 화면 (휴대폰용) -->
+  <section id="vApp" class="app-full" hidden>
+    <div class="phone" id="phoneApp"></div>
+  </section>
+
+  <p class="note">그림과 숫자는 개념 시뮬레이션이에요. 판정 기준은 시작값이고 2주 기록으로 현장마다 조정해요. 실제 알림 경로는 1단계 사내 메신저 웹훅 → 2단계 봇 → 3단계 자체 앱(FCM 푸시) 순서로 만들어요.</p>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script>
+(function(){
+  var ART_URL = "https://claude.ai/artifact/SWQzcwXL1nVw9D7KqGxso7";
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function css(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+  function $(id){ return document.getElementById(id); }
+
+  /* ---------- 휴대폰 앱 (두 곳에 같은 모양) ---------- */
+  function makePhone(host, full){
+    host.innerHTML='<div class="screen"><div class="push" role="status" aria-live="polite"><b></b><span></span><br><small></small></div>'+
+      '<div class="ptop"><b>로더 진단</b><span class="clk">14:02</span></div>'+
+      (full?'<span class="conn">연결 확인 중…</span>':'')+
+      '<div class="unit"><i></i><div><b>A센터 1호기</b><span class="st">정상</span></div></div>'+
+      '<div class="unit"><i></i><div><b>A센터 2호기</b><span>정상</span></div></div>'+
+      '<div class="notis"><div class="empty">새 알림 없음</div></div>'+
+      '<div class="empty" style="padding:2px">경고·정지는 즉시 푸시 · 주의는 하루 1번 요약</div></div>';
+    var P={host:host, push:host.querySelector('.push'), dot:host.querySelector('.unit i'), st:host.querySelector('.st'), list:host.querySelector('.notis'), clk:host.querySelector('.clk'), conn:host.querySelector('.conn'), t:null};
+    return P;
+  }
+  var COLOR={s:'var(--steel)',w:'var(--warn)',b:'var(--bad)',g:'var(--good)'};
+  var LVNAME={s:'주의 · 일일 요약',w:'경고 · 즉시 푸시',b:'정지 · 즉시 푸시'};
+  function phoneShow(P, a){
+    if (a.lv==='g'){ P.dot.style.background=COLOR.g; P.st.textContent='정상'; P.list.innerHTML='<div class="empty">새 알림 없음</div>'; return; }
+    P.clk.textContent=a.time; P.dot.style.background=COLOR[a.lv]; P.st.textContent=LVNAME[a.lv].split(' · ')[0]+' · '+a.title;
+    var e=P.list.querySelector('.empty'); if (e) e.remove();
+    var d=document.createElement('div'); d.className='nt '+a.lv;
+    var b=document.createElement('b'); b.textContent=LVNAME[a.lv]+' · '+a.unit; d.appendChild(b);
+    d.appendChild(document.createTextNode(a.title+' — '+a.body));
+    var sm=document.createElement('small'); sm.textContent=a.time+' · '+a.src; d.appendChild(sm);
+    P.list.insertBefore(d,P.list.firstChild); while (P.list.children.length>4) P.list.removeChild(P.list.lastChild);
+    if (a.lv!=='s'){ P.push.querySelector('b').textContent=(a.lv==='b'?'정지 · ':'경고 · ')+a.unit; P.push.querySelector('span').textContent=a.title; P.push.querySelector('small').textContent='로더 진단 · 지금';
+      P.push.classList.add('show'); clearTimeout(P.t); P.t=setTimeout(function(){ P.push.classList.remove('show'); },3200); }
+  }
+  var phoneSim=makePhone($('phoneSim'),false), phoneApp=makePhone($('phoneApp'),true);
+
+  /* ---------- 화면 전환 (#sim / #app) ---------- */
+  var mode='sim';
+  function route(){ mode=(location.hash==='#app')?'app':'sim';
+    $('vSim').hidden=mode!=='sim'; $('vApp').hidden=mode!=='app';
+    $('tSim').setAttribute('aria-current',mode==='sim'?'page':'false'); $('tApp').setAttribute('aria-current',mode==='app'?'page':'false');
+    if (mode==='app') startAppSide(); else if (sim) sim.resize(); }
+  window.addEventListener('hashchange',route);
+
+  /* ---------- 실시간 연결 (발표용) ---------- */
+  var room=null, canSend=false, live=false;
+  if (window.claude && window.claude.use){
+    window.claude.use('room').then(function(r){ room=r; if(!r) return;
+      r.onConnection(function(c){ live=c; setConn(); }, function(){ live=false; setConn(); });
+      r.on('alert',function(m){ if (m.sameTab) return; var a=m.data; if (!a || typeof a!=='object') return;
+        var safe={lv:['g','s','w','b'].indexOf(a.lv)>=0?a.lv:'s', title:String(a.title||'').slice(0,60), body:String(a.body||'').slice(0,200), time:String(a.time||'').slice(0,5), unit:String(a.unit||'').slice(0,20), src:String(a.src||'').slice(0,40)};
+        gotRemote=true; stopDemo(); phoneShow(phoneApp,safe); setConn(); });
+    });
+    window.claude.use('user').then(function(u){ canSend=!!(u && u.canEdit && u.canEdit()); }).catch(function(){});
+  }
+  var gotRemote=false;
+  function setConn(){ var c=phoneApp.conn; if(!c) return;
+    if (gotRemote){ c.className='conn live'; c.textContent='발표 화면과 실시간 연결됨'; }
+    else if (live){ c.className='conn live'; c.textContent='연결됨 · 발표 화면에서 고장을 고르면 여기로 와요'; }
+    else { c.className='conn'; c.textContent='데모 재생 중 (발표 화면과 연결 안 됨)'; } }
+  function broadcast(a){ if (room && canSend && live){ room.emit('alert',a).catch(function(){}); } }
+
+  /* ---------- 앱 화면 데모 (연결 없을 때) ---------- */
+  var DEMO=[
+    {lv:'s',title:'X 도착 시간 +17%',body:'같은 거리인데 점점 늦어짐 → 다음 점검 때 레일 이물·벨트 확인',src:'메인 보드 (기존 값)'},
+    {lv:'w',title:'바퀴 축 볼트 풀림 의심',body:'3열에 멈출 때 롤 0.32° 변화, 충격 2.6g 반복 → 바퀴 블록 점검',src:'노드 ID5'},
+    {lv:'w',title:'케이블 베어 이탈 의심',body:'X 2.8~3.4m 구간 통신 오류 3회/일 → 가이드 채널 점검',src:'메인 보드 + 노드'},
+    {lv:'b',title:'끼임 · 3층 5열 도착 실패',body:'A_05 · 블랙박스 128건 저장 · 코드·설정 아님 → 토트 위치 점검',src:'메인 보드 (기존 값)'},
+    {lv:'w',title:'메인 보드 3.3V 저하',body:'3주 동안 3.30 → 3.18V, 저전압 리셋 2회 → 전원부 점검·보드 교체 준비',src:'메인 보드 자기 점검'}
+  ], demoT=null, demoI=0, appStarted=false;
+  function clock(){ var d=new Date(); return (d.getHours()<10?'0':'')+d.getHours()+':'+(d.getMinutes()<10?'0':'')+d.getMinutes(); }
+  function startAppSide(){ if (appStarted) return; appStarted=true; setConn();
+    setTimeout(function(){ if (!gotRemote) runDemo(); }, 2500); }
+  function runDemo(){ if (demoT || gotRemote) return; var tick=function(){ var a=Object.assign({unit:'A센터 1호기',time:clock()},DEMO[demoI%DEMO.length]); demoI++; phoneShow(phoneApp,a); };
+    tick(); demoT=setInterval(tick, reduce?9000:6000); }
+  function stopDemo(){ if (demoT){ clearInterval(demoT); demoT=null; } }
+
+  /* ---------- 데이터 흐름 띠 ---------- */
+  var hops=[].slice.call(document.querySelectorAll('#flow .hop')), flowT=[];
+  function flow(lv, from, a){
+    flowT.forEach(clearTimeout); flowT=[];
+    hops.forEach(function(h){ h.className='hop'; });
+    for (var k=0;k<from;k++) hops[k].classList.add('skip');
+    var gap=reduce?0:420;
+    for (var i=from;i<5;i++){ (function(i){ flowT.push(setTimeout(function(){ hops[i].classList.add('on',lv); if (i===4){ phoneShow(phoneSim,a); } }, (i-from)*gap)); })(i); }
+    $('flowNote').textContent=(from>0?'노드 없이 메인 보드가 이미 가진 값으로 판단 · ':'')+(lv==='s'?'주의는 하루 1번 요약 메시지에 담겨요.':'경고·정지는 바로 휴대폰 푸시로 가요.');
+  }
+
+  /* ---------- 판정 ---------- */
+  var B={arr:1.60,diff:1.0,g:0.80,settle:180,roll:0.00,com:0,vdd:3.30};
+  var ROWS=[['X 도착 시간 (같은 거리)','메인','arr','s',2],['X 두 모터 위치 차이','메인','diff','mm',1],['최대 충격','노드','g','g',2],['정지 후 흔들림 시간','노드','settle','ms',0],['같은 칸 기울기 변화','노드','roll','°',2],['같은 X 구간 통신 오류','메인','com','회',0],['보드 3.3V (VREFINT)','메인','vdd','V',2]];
+  function judge(k,v){
+    if (k==='arr'){ var r=v/B.arr-1; return r>=0.30?2:r>=0.15?1:0; }
+    if (k==='diff') return v>=3?2:v>=1.5?1:0;
+    if (k==='g') return v>=2.5?2:v>=2.0?1:0;
+    if (k==='settle'){ var r2=v/B.settle-1; return r2>=0.6?2:r2>=0.3?1:0; }
+    if (k==='roll'){ var d=Math.abs(v-B.roll); return d>=0.3?2:d>=0.15?1:0; }
+    if (k==='com') return v>=5?2:v>=2?1:0;
+    if (k==='vdd') return v<=3.18?2:v<=3.23?1:0;
+  }
+  var CHIP=['<span class="chip g">정상</span>','<span class="chip s">주의</span>','<span class="chip w">경고</span>'];
+  var fault='none', p=0, jammed=false, lastLv=0;
+  function measure(){
+    var n=function(a){ return (Math.random()-0.5)*a; };
+    var m={arr:B.arr*(1+n(0.04)), diff:B.diff+n(0.3), g:B.g+n(0.15), settle:B.settle+n(16), roll:n(0.04), com:0, vdd:B.vdd+n(0.01)};
+    if (fault==='bear'){ m.com=Math.round(7*p+Math.random()*0.8); m.diff+=2.6*p; m.g+=1.4*p; }
+    if (fault==='tension'){ m.settle+=170*p; m.arr*=1+0.06*p; }
+    if (fault==='wheel'){ m.g+=2.3*p; m.roll+=0.36*p; m.diff+=1.2*p; }
+    if (fault==='friction'){ m.arr*=1+0.4*p; m.diff+=2.8*p; }
+    if (fault==='board'){ m.vdd-=0.16*p; }
+    return m;
+  }
+  function fmt(k,v,dg){ return (k==='com'?Math.round(v):v.toFixed(dg)); }
+  function showJudge(m){
+    var worst=0, why=[];
+    $('jbody').innerHTML=ROWS.map(function(r){ var v=m[r[2]], j=judge(r[2],v); if (j>worst) worst=j; if (j) why.push(r[2]);
+      return '<tr><td>'+r[0]+'</td><td>'+r[1]+'</td><td class="mono">'+fmt(r[2],B[r[2]],r[4])+r[3]+'</td><td class="mono">'+fmt(r[2],v,r[4])+r[3]+'</td><td>'+CHIP[j]+'</td></tr>'; }).join('');
+    if (worst>lastLv){
+      var t,b,src,from=0;
+      if (why.indexOf('vdd')>=0){ t='메인 보드 3.3V 저하'; b='3.30 → '+m.vdd.toFixed(2)+'V · 리셋 원인 기록 확인 → 전원부 점검'+(worst===2?' · 보드 교체 준비':''); src='메인 보드 자기 점검'; from=1; }
+      else if (why.indexOf('com')>=0){ t='케이블 베어 이탈 의심'; b='같은 X 구간 통신 오류 '+Math.round(m.com)+'회 · 하부 지연 '+m.diff.toFixed(1)+'mm → 가이드 채널 점검'; src='메인 보드 + 노드'; }
+      else if (why.indexOf('settle')>=0){ t='정지 후 흔들림 +'+Math.round((m.settle/B.settle-1)*100)+'%'; b='같은 위치 진단 동작 기준 → 벨트 장력·체결 점검'; src='노드 ID5'; }
+      else if (why.indexOf('roll')>=0 || why.indexOf('g')>=0){ t='바퀴 축 볼트 풀림 의심'; b='같은 칸 롤 '+m.roll.toFixed(2)+'° 변화 · 충격 '+m.g.toFixed(1)+'g → 바퀴 블록 점검'; src='노드 ID5'; }
+      else { t='X 도착 시간 +'+Math.round((m.arr/B.arr-1)*100)+'%'; b='두 모터 차이 '+m.diff.toFixed(1)+'mm → 레일 이물·마찰 점검'; src='메인 보드 (기존 값)'; from=1; }
+      var a={lv:worst===2?'w':'s', title:t, body:b, time:clock(), unit:'A센터 1호기', src:src};
+      addLog(a); flow(a.lv,from,a); broadcast(a); lastLv=worst;
+    }
+  }
+  function addLog(a){ var li=document.createElement('li'); li.innerHTML='<span class="chip '+a.lv+'"></span><span></span>';
+    li.firstChild.textContent=a.lv==='b'?'정지':a.lv==='w'?'경고':a.lv==='s'?'주의':'정상'; li.lastChild.textContent=a.title+' · '+a.body;
+    var L=$('log'); L.insertBefore(li,L.firstChild); while (L.children.length>4) L.removeChild(L.lastChild); }
+  function jamAlert(col){ var a={lv:'b',title:'끼임 · '+col+'열 도착 실패',body:'A_05 · 블랙박스 저장 · 설정 체크섬 같음 → 토트 위치 점검, HMI 수동 복구',time:clock(),unit:'A센터 1호기',src:'메인 보드 (기존 값)'};
+    addLog(a); flow('b',1,a); broadcast(a); }
+
+  /* ---------- 고장 버튼 ---------- */
+  var FN={none:'정상',wheel:'바퀴 풀림',friction:'레일 마찰',tension:'벨트 장력·체결',jam:'물건 끼임',bear:'케이블 베어 이탈',board:'메인 보드 전원 노화'};
+  [].forEach.call(document.querySelectorAll('#faults button'),function(btn){ btn.addEventListener('click',function(){
+    fault=btn.getAttribute('data-f'); p=0; jammed=false; lastLv=0;
+    [].forEach.call(document.querySelectorAll('#faults button'),function(x){ x.setAttribute('aria-pressed',x===btn); });
+    if (sim) sim.reset();
+    if (fault==='none'){ var a={lv:'g',title:'정상',body:'',time:clock(),unit:'A센터 1호기',src:''}; phoneShow(phoneSim,a); broadcast(a); hops.forEach(function(h){ h.className='hop'; }); $('flowNote').textContent='정상 운전 · 기준값 = 이 로더의 최근 7일 중앙값'; }
+    else { $('flowNote').textContent=FN[fault]+' 진행 중 (실제 며칠~몇 주를 약 20초로 줄였어요)'; }
+  }); });
+
+  /* ---------- QR ---------- */
+  function qrSvg(text){ if (typeof qrcode==='undefined') return ''; var q=qrcode(0,'M'); q.addData(text); q.make(); return q.createSvgTag({cellSize:4,margin:2,scalable:true}); }
+  if (ART_URL){ var s1=qrSvg(ART_URL+'#app'), s2=qrSvg(ART_URL+'#sim'); if (s1){ $('qrApp').innerHTML=s1; $('qrSim').innerHTML=s2; $('qrCard').hidden=false; } }
+
+  /* ---------- 3D ---------- */
+  var sim=null;
+  (function(){
+    var stage=$('stage');
+    if (typeof THREE==='undefined'){ $('fallback').hidden=false; return; }
+    var renderer; try { renderer=new THREE.WebGLRenderer({antialias:true}); } catch(e){ $('fallback').hidden=false; return; }
+    renderer.setPixelRatio(Math.min(2, window.devicePixelRatio||1)); renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap; renderer.outputEncoding=THREE.sRGBEncoding;
+    stage.insertBefore(renderer.domElement, stage.firstChild);
+    var scene=new THREE.Scene(), cam=new THREE.PerspectiveCamera(40,16/9,0.05,80);
+    function bg(){ scene.background=new THREE.Color(css('--grid')||'#E3E9E6'); } bg();
+    scene.add(new THREE.HemisphereLight(0xffffff,0x8a8f94,0.75));
+    var sun=new THREE.DirectionalLight(0xffffff,0.8); sun.position.set(4,8,5); sun.castShadow=true; sun.shadow.mapSize.set(1024,1024);
+    var sc=sun.shadow.camera; sc.left=-6; sc.right=6; sc.top=6; sc.bottom=-6; sc.near=1; sc.far=25; scene.add(sun);
+    var fl2=new THREE.DirectionalLight(0xdfe8ff,0.3); fl2.position.set(-5,4,-4); scene.add(fl2);
+    function mat(c,r,m){ return new THREE.MeshStandardMaterial({color:c,roughness:r==null?0.6:r,metalness:m||0}); }
+    var M={floor:mat(0xb9c0c5,0.95), alu:mat(0xc9ced3,0.35,0.6), dark:mat(0x2a3138,0.5,0.2), tote:mat(0x2c6fb0,0.55), toteY:mat(0xd9b62b,0.55), rack:mat(0x8e979f,0.5,0.4),
+      yellow:mat(0xe0a400,0.4), red:mat(0xc0392b,0.4), green:mat(0x2f9e57,0.4), chain:mat(0x3a4148,0.7), cable:mat(0xd9822b,0.5), item:mat(0xc8a06a,0.85), panel:mat(0xdfe3e6,0.6), board:mat(0x2f6a4e,0.6)};
+    function box(w,h,d,m,x,y,z,par){ var b=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m); b.position.set(x,y,z); b.castShadow=true; b.receiveShadow=true; (par||scene).add(b); return b; }
+    function cyl(r,h,m,x,y,z,par,rx){ var c=new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,20),m); c.position.set(x,y,z); if(rx) c.rotation.x=rx; c.castShadow=true; (par||scene).add(c); return c; }
+    var floor=new THREE.Mesh(new THREE.PlaneGeometry(16,12),M.floor); floor.rotation.x=-Math.PI/2; floor.receiveShadow=true; scene.add(floor);
+    var X0=-3.0, X1=3.0, COLS=[], LV=[0.35,0.8,1.25,1.7];
+    for (var c=0;c<9;c++) COLS.push(-2.6+c*0.65);
+    /* 랙 : 뒤쪽만 (앞쪽은 단면처럼 숨김) */
+    COLS.concat([COLS[8]+0.65]).forEach(function(x){ box(0.04,2.15,0.04,M.rack,x-0.325,1.075,-0.53); box(0.04,2.15,0.04,M.rack,x-0.325,1.075,-1.03); });
+    LV.forEach(function(y){ box(5.9,0.03,0.52,M.rack,-0.33,y-0.02,-0.78); COLS.forEach(function(x,i){ box(0.5,0.22,0.42,(i+Math.round(y*10))%5===0?M.toteY:M.tote,x,y+0.11,-0.78); }); });
+    /* 레일 · 벨트 */
+    box(6.4,0.04,0.05,M.alu,0,0.02,0.2); box(6.4,0.04,0.05,M.alu,0,0.02,-0.2); box(6.4,0.05,0.06,M.alu,0,2.08,0);
+    var belts=[], pulleys=[];
+    [0.34,-0.34].forEach(function(z){ var segs=[]; for (var i=0;i<24;i++) segs.push(box(0.26,0.012,0.03,mat(0xd9822b,0.7),0,0,z)); belts.push({z:z,segs:segs});
+      pulleys.push(cyl(0.05,0.04,M.dark,X0,0.08,z,null,Math.PI/2)); pulleys.push(cyl(0.05,0.04,M.dark,X1,0.08,z,null,Math.PI/2)); });
+    /* 캐리지 */
+    var car=new THREE.Group(); scene.add(car);
+    box(0.62,0.1,0.52,M.dark,0,0.14,0,car);
+    var wheels=[]; [[0.24,0.2],[0.24,-0.2],[-0.24,0.2],[-0.24,-0.2]].forEach(function(q){ wheels.push(cyl(0.05,0.035,M.alu,q[0],0.07,q[1],car,Math.PI/2)); });
+    box(0.05,1.92,0.05,M.alu,0.04,1.15,0.2,car); box(0.05,1.92,0.05,M.alu,0.04,1.15,-0.2,car);
+    box(0.16,0.14,0.14,M.dark,0.33,0.16,-0.14,car); box(0.16,0.14,0.14,M.dark,0.33,2.12,-0.14,car); box(0.15,0.15,0.15,M.dark,-0.2,2.12,0.02,car);
+    var node=box(0.1,0.05,0.12,M.yellow,0.15,0.215,-0.14,car);
+    var curve=new THREE.CatmullRomCurve3([new THREE.Vector3(0.15,0.24,-0.14),new THREE.Vector3(0.21,0.29,-0.14),new THREE.Vector3(0.26,0.2,-0.14)]);
+    car.add(new THREE.Mesh(new THREE.TubeGeometry(curve,16,0.008,6,false),M.cable));
+    var lift=new THREE.Group(); car.add(lift); box(0.36,0.04,0.36,M.alu,0.04,0,0,lift);
+    var tray=new THREE.Group(); lift.add(tray); tray.position.y=0.04;
+    box(0.3,0.015,0.34,M.yellow,0.04,0.01,0,tray); box(0.3,0.05,0.015,M.yellow,0.04,0.035,0.17,tray); box(0.3,0.05,0.015,M.yellow,0.04,0.035,-0.17,tray);
+    var item=box(0.14,0.08,0.12,M.item,0.04,0.06,0,tray); item.visible=false;
+    box(0.08,0.08,0.08,M.dark,0.26,0.05,0.14,lift);
+    cyl(0.01,0.18,M.alu,0.04,2.27,0.12,car); var lamp=cyl(0.03,0.05,M.green,0.04,2.38,0.12,car);
+    /* 케이블 베어 */
+    var chLow=box(1,0.05,0.12,M.chain,0,0.05,-0.36), chUp=box(1,0.05,0.12,M.chain,0,0.2,-0.36);
+    var chLoop=new THREE.Mesh(new THREE.TorusGeometry(0.075,0.025,8,16,Math.PI),M.chain); scene.add(chLoop);
+    var bearBad=box(0.42,0.05,0.12,M.red,0,0.08,-0.3); bearBad.visible=false;
+    /* 제어반 + 메인 보드 */
+    box(0.6,1.7,0.42,M.panel,-3.75,0.85,0.55);
+    var mb=box(0.34,0.24,0.02,M.board,-3.75,1.25,0.77); var mbLed=box(0.05,0.05,0.02,M.green,-3.65,1.42,0.785);
+    box(0.7,0.06,0.5,M.alu,-3.25,0.75,0); box(0.06,0.75,0.06,M.alu,-3.25,0.375,0);
+
+    var R={x:-2.75,y:0.35,st:'load',t:0,tx:0,ty:0,side:1,ring:0,fx:0,fy:0,dur:1};
+    function lerp(a,b,u){ return a+(b-a)*Math.max(0,Math.min(1,u)); }
+    function ease(u){ u=Math.max(0,Math.min(1,u)); return u<0.5?2*u*u:1-Math.pow(-2*u+2,2)/2; }
+    function run(dt){
+      R.t+=dt;
+      if (R.st==='load'){ item.visible=true; if (R.t>0.6){ R.st='go'; R.t=0; R.fx=R.x; R.fy=R.y; R.tx=COLS[Math.floor(Math.random()*9)]; R.ty=LV[Math.floor(Math.random()*4)]; R.side=-1; R.dur=(0.9+Math.abs(R.tx-R.fx)*0.32)*(fault==='friction'?1+0.4*p:1); } }
+      else if (R.st==='go'){ var u=ease(R.t/R.dur); R.x=lerp(R.fx,R.tx,u); R.y=lerp(R.fy,R.ty,u); if (R.t>=R.dur){ R.st='ring'; R.t=0; } }
+      else if (R.st==='ring'){ var f=fault==='tension'?lerp(5,3.4,p):5, tau=fault==='tension'?lerp(0.12,0.32,p):0.12; R.ring=0.014*Math.exp(-R.t/tau)*Math.sin(2*Math.PI*f*R.t);
+        if (R.t>0.6){ R.ring=0; R.st='tilt'; R.t=0; showJudge(measure()); } }
+      else if (R.st==='tilt'){
+        if (fault==='jam' && p>0.15 && !jammed){ tray.rotation.x=R.side*0.25; if (R.t>0.5){ jammed=true; lamp.material=M.red; jamAlert(COLS.indexOf(R.tx)+1); } return; }
+        if (jammed) return;
+        var a=R.t<0.4?ease(R.t/0.4)*0.7:0.7*(1-ease((R.t-0.5)/0.3)); tray.rotation.x=R.side*a; if (R.t>0.35) item.visible=false;
+        if (R.t>0.85){ tray.rotation.x=0; R.st='back'; R.t=0; R.fx=R.x; R.fy=R.y; } }
+      else if (R.st==='back'){ var d=0.9+Math.abs(R.fx+2.75)*0.3, u2=ease(R.t/d); R.x=lerp(R.fx,-2.75,u2); R.y=lerp(R.fy,0.35,u2); if (R.t>=d){ R.st='load'; R.t=0; } }
+    }
+    function place(){
+      var x=R.x+R.ring; car.position.x=x; lift.position.y=R.y;
+      car.rotation.x=fault==='wheel'?p*0.035:0;
+      wheels[0].position.z=0.2+(fault==='wheel'?p*0.03:0); wheels[0].rotation.y=fault==='wheel'?Math.sin(performance.now()/90)*p*0.25:0;
+      wheels[0].material=(fault==='wheel'&&p>0.5)?M.red:M.alu;
+      var sag=0.01+(fault==='tension'?p*0.1:0);
+      belts.forEach(function(bt){ var n=bt.segs.length; bt.segs.forEach(function(sg,i){ var t=(i+0.5)/n; sg.position.set(X0+(X1-X0)*t, 0.13-Math.sin(Math.PI*t)*sag, bt.z); var hot=fault==='tension'?p:0; sg.material.color.setRGB(0.85,0.51-0.3*hot,0.17-0.1*hot); }); });
+      var xf=X0+0.1, xa=x-0.3, xl=(6.4+xf+xa)/2; chLow.scale.x=Math.max(0.01,xl-xf); chLow.position.x=(xf+xl)/2; chUp.scale.x=Math.max(0.01,xl-xa); chUp.position.x=(xa+xl)/2;
+      chLoop.position.set(xl,0.125,-0.36); chLoop.rotation.z=-Math.PI/2;
+      bearBad.visible=fault==='bear'&&p>0.05; if (bearBad.visible){ bearBad.position.set(xl-0.45,0.06+0.05*p,-0.36+0.15*p); bearBad.rotation.x=p*0.35; }
+      var blink=fault==='board'&&p>0.3&&(Math.floor(performance.now()/400)%2===0); mbLed.material=fault==='board'&&p>0.3?(blink?M.red:M.dark):M.green;
+      node.material=M.yellow;
+    }
+    function step(dt){ if (fault!=='none' && !jammed) p=Math.min(1,p+dt/20); run(dt); place(); }
+    var view={th:-0.8,ph:0.36,r:7.4,tx:0.2,ty:1.0,tz:0}, follow=false;
+    var VW=[{th:-0.8,ph:0.36,r:7.4,ty:1.0},{th:-1.5707,ph:0.12,r:7.5,ty:1.2},{th:-0.6,ph:0.25,r:3.0,ty:0.6,follow:true}];
+    function applyCam(){ if (follow) view.tx=car.position.x; cam.position.set(view.tx+view.r*Math.cos(view.ph)*Math.sin(view.th), view.ty+view.r*Math.sin(view.ph), view.tz+view.r*Math.cos(view.ph)*Math.cos(view.th)); cam.lookAt(view.tx,view.ty,view.tz); }
+    var drag=null;
+    stage.addEventListener('pointerdown',function(e){ drag={x:e.clientX,y:e.clientY,th:view.th,ph:view.ph}; });
+    stage.addEventListener('pointermove',function(e){ if(!drag) return; view.th=drag.th-(e.clientX-drag.x)*0.008; if (e.pointerType==='mouse') view.ph=Math.max(0.03,Math.min(1.5,drag.ph+(e.clientY-drag.y)*0.006)); if(!running) render(); });
+    ['pointerup','pointercancel','pointerleave'].forEach(function(ev){ stage.addEventListener(ev,function(){ drag=null; }); });
+    stage.addEventListener('wheel',function(e){ e.preventDefault(); view.r=Math.max(2,Math.min(16,view.r*(1+Math.sign(e.deltaY)*0.08))); if(!running) render(); },{passive:false});
+    [1,2,3].forEach(function(n){ $('v'+n).addEventListener('click',function(){ var v=VW[n-1]; view.th=v.th; view.ph=v.ph; view.r=v.r; view.ty=v.ty; follow=!!v.follow; if(!follow) view.tx=0.2; if(!running) render(); }); });
+    var TP=[['노드 ID5',function(){ return [car.position.x+0.15,0.33,-0.14]; }],['메인 보드',function(){ return [-3.75,1.5,0.78]; }],['케이블 베어',function(){ var xl=(6.4+X0+0.1+car.position.x-0.3)/2; return [xl,0.3,-0.4]; }],['X 벨트',function(){ return [1.4,0.18,0.34]; }],['바퀴',function(){ return [car.position.x+0.24,0.12,0.26]; }],['랙 · 토트',function(){ return [1.9,1.5,-0.78]; }]];
+    var tags=TP.map(function(t){ var d=document.createElement('div'); d.className='tag'; d.textContent=t[0]; stage.appendChild(d); return d; });
+    var showTags=true, vt=new THREE.Vector3();
+    $('vTags').addEventListener('click',function(){ showTags=!showTags; this.setAttribute('aria-pressed',showTags); tags.forEach(function(t){ t.hidden=!showTags; }); if(!running) render(); });
+    function placeTags(){ var rect=stage.getBoundingClientRect(); tags.forEach(function(t,i){ if (t.hidden) return; var q=TP[i][1](); vt.set(q[0],q[1],q[2]).project(cam); t.style.left=((vt.x+1)/2*rect.width)+'px'; t.style.top=((1-vt.y)/2*rect.height)+'px'; }); }
+    var SN={load:'투입구에서 받기',go:'X·Y 이동',ring:'정지 · 노드가 흔들림 측정',tilt:'TILT 배출',back:'복귀'};
+    function render(){ applyCam(); renderer.render(scene,cam); if (showTags) placeTags(); $('phase').textContent=(jammed?'정지 (끼임)':SN[R.st])+(fault!=='none'?' · '+FN[fault]+' '+Math.round(p*100)+'%':''); }
+    function resize(){ var w=stage.clientWidth, h=stage.clientHeight; if(!w||!h) return; renderer.setSize(w,h,false); cam.aspect=w/h; cam.updateProjectionMatrix(); render(); }
+    window.addEventListener('resize',resize);
+    var running=!reduce, last=performance.now();
+    function loop(now){ if(!running) return; var dt=Math.min(0.05,(now-last)/1000); last=now; if (mode==='sim' && !document.hidden){ step(dt); render(); } requestAnimationFrame(loop); }
+    for (var s=0;s<120;s++) step(1/60);
+    sim={ resize:resize, reset:function(){ R.st='back'; R.t=0; R.fx=R.x; R.fy=R.y; item.visible=false; lamp.material=M.green; if(!running){ step(0.016); render(); } } };
+    resize(); if (running) requestAnimationFrame(function(t){ last=t; loop(t); });
+    if (reduce){ var tick=setInterval(function(){ for (var i=0;i<30;i++) step(1/60); render(); }, 500); }
+    if (window.matchMedia) window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',function(){ bg(); render(); });
+  })();
+
+  showJudge(measure());
+  route();
+})();
+</script>
